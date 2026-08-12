@@ -1,0 +1,405 @@
+<!DOCTYPE html>
+<html>
+<head>
+<title>Bulk Email</title>
+ 
+<style>
+.sending-overlay{
+position:fixed;
+top:0;
+left:0;
+width:100%;
+height:100%;
+background:rgba(0,0,0,.45);
+display:flex;
+justify-content:center;
+align-items:center;
+z-index:99999;
+}
+ 
+.sending-box{
+background:white;
+padding:35px;
+border-radius:10px;
+min-width:350px;
+text-align:center;
+box-shadow:0 10px 30px rgba(0,0,0,.25);
+}
+ 
+.spinner{
+width:50px;
+height:50px;
+margin:0 auto 20px;
+border:5px solid #ddd;
+border-top:5px solid #0078d4;
+border-radius:50%;
+animation:spin 1s linear infinite;
+}
+ 
+@keyframes spin{
+0%{transform:rotate(0deg);}
+100%{transform:rotate(360deg);}
+}
+ 
+ 
+body{
+font-family: Arial, sans-serif;
+background:#f4f6f9;
+margin:0;
+padding:30px;
+}
+ 
+.header{
+display:flex;
+justify-content:space-between;
+align-items:center;
+margin-bottom:30px;
+}
+ 
+.cards{
+display:flex;
+gap:20px;
+margin-bottom:30px;
+}
+ 
+.stat-card{
+flex:1;
+background:white;
+padding:20px;
+border-radius:8px;
+box-shadow:0 3px 10px rgba(0,0,0,0.08);
+text-align:center;
+}
+ 
+.stat-card h3{
+margin:0;
+font-size:14px;
+color:#555;
+}
+ 
+.stat-card p{
+font-size:28px;
+margin-top:10px;
+font-weight:bold;
+}
+ 
+.btn{
+background:#0078d4;
+color:white;
+padding:10px 16px;
+border:none;
+border-radius:4px;
+cursor:pointer;
+}
+ 
+.btn:hover{
+background:#005a9e;
+}
+ 
+table{
+width:100%;
+border-collapse:collapse;
+background:white;
+box-shadow:0 3px 10px rgba(0,0,0,0.08);
+}
+ 
+th,td{
+padding:12px;
+border-bottom:1px solid #eee;
+text-align:left;
+}
+ 
+th{
+background:#f0f2f5;
+}
+ 
+.modal{
+display:none;
+position:fixed;
+z-index:1000;
+left:0;
+top:0;
+width:100%;
+height:100%;
+background:rgba(0,0,0,0.4);
+overflow:auto;
+}
+ 
+.modal-content{
+background:white;
+width:600px;
+margin:60px auto;
+padding:25px;
+border-radius:8px;
+}
+ 
+.close{
+float:right;
+font-size:20px;
+cursor:pointer;
+}
+ 
+select,input[type="file"]{
+width:100%;
+padding:8px;
+margin-top:8px;
+margin-bottom:20px;
+}
+ 
+.alert{
+padding:10px;
+background:#ffe0e0;
+color:#a10000;
+margin-bottom:15px;
+border-radius:4px;
+}
+ 
+.success{
+background:#e0ffe8;
+color:#007a2f;
+}
+ 
+</style>
+</head>
+ 
+<body>
+ 
+<h2>Bulk Email Dashboard</h2>
+ 
+<div class="header">
+<button class="btn" onclick="openModal()">+ Create Bulk Email</button>
+</div>
+ 
+<div class="cards">
+ 
+<div class="stat-card">
+<h3>Active</h3>
+<p>{{ active_count or 0 }}</p>
+</div>
+ 
+<div class="stat-card">
+<h3>Completed</h3>
+<p>{{ completed_count or 0 }}</p>
+</div>
+ 
+<div class="stat-card">
+<h3>Paused</h3>
+<p>{{ paused_count or 0 }}</p>
+</div>
+ 
+<div class="stat-card">
+<h3>Total</h3>
+<p>{{ total_count or 0 }}</p>
+</div>
+ 
+</div>
+ 
+<table>
+ 
+<tr>
+<th>ID</th>
+<th>Subject</th>
+<th>Category</th>
+<th>Status</th>
+<th>Recipients</th>
+<th>Created</th>
+</tr>
+ 
+{% if bulk_runs %}
+{% for run in bulk_runs %}
+ 
+<tr>
+<td>{{ run.id }}</td>
+<td>{{ run.subject }}</td>
+<td>{{ run.category }}</td>
+<td>{{ run.status }}</td>
+<td>{{ run.recipient_count }}</td>
+<td>{{ run.created_at }}</td>
+</tr>
+ 
+{% endfor %}
+{% else %}
+ 
+<tr>
+<td colspan="6" style="text-align:center;">No bulk runs yet</td>
+</tr>
+ 
+{% endif %}
+ 
+</table>
+ 
+<div id="bulkModal" class="modal">
+ 
+<div class="modal-content">
+ 
+<span class="close" onclick="closeModal()">&times;</span>
+ 
+<h2>📧 Bulk Email Sender</h2>
+ 
+{% with messages = get_flashed_messages() %}
+{% if messages %}
+{% for msg in messages %}
+<div class="alert">{{ msg }}</div>
+{% endfor %}
+{% endif %}
+{% endwith %}
+ 
+<form method="POST"
+      action="{{ url_for('send_bulk_from_draft_route') }}"
+      enctype="multipart/form-data"
+      id="bulkForm">
+<label>Workflow Type</label>
+ 
+<select name="workflow_type" id="workflow_type" required>
+ 
+<option value="generic">
+Generic Bulk Mail
+</option>
+ 
+<option value="server">
+Server Workflow
+</option>
+ 
+</select>
+<div id="serverOptions" style="display:none;">
+ 
+<label>Server Sending Mode</label>
+ 
+<select name="server_mode" id="server_mode">
+ 
+<option value="hostname">
+Per Hostname
+</option>
+ 
+<option value="owner">
+Group By Owner
+</option>
+ 
+</select>
+ 
+</div>
+ 
+<label>Select Draft</label>
+ 
+{% if drafts %}
+<select name="draft_id" required>
+{% for draft in drafts %}
+<option value="{{ draft.id }}">
+{{ draft.subject or "No Subject" }}
+</option>
+{% endfor %}
+</select>
+{% else %}
+<div class="alert">No drafts found in Outlook.</div>
+{% endif %}
+ 
+<label>Select Category</label>
+ 
+<select name="bulk_category_name" required>
+<option value="">-- Select Category --</option>
+ 
+{% for category in categories %}
+<option value="{{ category.name }}">
+{{ category.name }}
+</option>
+{% endfor %}
+ 
+</select>
+ 
+<label>Upload Excel File (.xlsx)</label>
+<input type="file" name="excel_file" accept=".xlsx" required>
+ 
+<button type="submit" class="btn" id="submitBulkBtn">
+Upload & Preview
+</button>
+ 
+</form>
+ 
+</div>
+</div>
+<div id="sendingOverlay" class="sending-overlay" style="display:none;">
+    <div class="sending-box">
+        <div class="spinner"></div>
+        <h2>Sending Emails...</h2>
+        <p>Please don't refresh or close this page.</p>
+        <p id="sendingStatus">Preparing...</p>
+    </div>
+</div>
+ 
+<script>
+ 
+function openModal(){
+document.getElementById("bulkModal").style.display="block";
+}
+ 
+function closeModal(){
+document.getElementById("bulkModal").style.display="none";
+}
+const workflowType =
+document.getElementById("workflow_type");
+ 
+const serverOptions =
+document.getElementById("serverOptions");
+ 
+workflowType.addEventListener("change", function(){
+ 
+if(this.value === "server"){
+ 
+serverOptions.style.display = "block";
+ 
+}else{
+ 
+serverOptions.style.display = "none";
+ 
+}
+ 
+});
+
+document.getElementById("bulkForm").addEventListener("submit",function(e){
+ 
+const fileInput=document.querySelector('input[name="excel_file"]');
+ 
+if(!fileInput.files.length){
+alert("Please upload an Excel file.");
+e.preventDefault();
+return;
+}
+ 
+const fileName=fileInput.files[0].name.toLowerCase();
+ 
+if(!fileName.endsWith(".xlsx")){
+alert("Only .xlsx files are supported.");
+e.preventDefault();
+return;
+}
+ 
+const btn=document.getElementById("submitBulkBtn");
+btn.innerText="Processing...";
+btn.disabled=true;
+
+//Show loading Overlay
+showLoading("Uploading Excel...")
+ 
+});
+ 
+const bulkModal=document.getElementById("bulkModal");
+ 
+bulkModal.onclick=function(e){
+if(e.target===bulkModal){
+closeModal();
+}
+}
+function showLoading(message="Processing..."){
+    document.getElementById("sendingStatus").innerText = message;
+    document.getElementById("sendingOverlay").style.display = "flex";
+}
+ 
+function hideLoading(){
+    document.getElementById("sendingOverlay").style.display = "none";
+}
+ 
+ 
+</script>
+ 
+</body>
+</html>

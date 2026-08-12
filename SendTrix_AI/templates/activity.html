@@ -1,0 +1,28 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Activity Logs</title>
+</head>
+<body>
+ 
+<h2>All Activity Logs</h2>
+ 
+<table border="1" cellpadding="8">
+    <tr>
+        <th>Subject</th>
+        <th>Action</th>
+        <th>Time</th>
+    </tr>
+ 
+    {% for log in logs %}
+    <tr>
+        <td>{{ log[0] }}</td>
+        <td>{{ log[1] }}</td>
+        <td>{{ log[2] }}</td>
+    </tr>
+    {% endfor %}
+ 
+</table>
+ 
+</body>
+</html>

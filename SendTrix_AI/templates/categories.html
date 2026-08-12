@@ -1,0 +1,848 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Categories Dashboard</title>
+ 
+<style>
+ 
+body{
+font-family: Arial, Helvetica, sans-serif;
+margin:0;
+background:#f5f6fa;
+}
+ 
+.container{
+display:flex;
+height:100vh;
+}
+ 
+/* LEFT PANEL */
+ 
+.sidebar{
+width:260px;
+background:white;
+border-right:1px solid #ddd;
+overflow-y:auto;
+}
+ 
+.sidebar h2{
+padding:18px;
+margin:0;
+border-bottom:1px solid #eee;
+}
+
+.category.small{
+  font-size: 14px;
+  padding-left: 30px;
+  background: #fafafa;
+}
+ 
+.category{
+padding:14px 18px;
+cursor:pointer;
+border-bottom:1px solid #f0f0f0;
+transition:background 0.2s;
+}
+ 
+.category:hover{
+background:#f3f6ff;
+}
+
+.current-version{
+  font-weight: bold;
+  color: #0078d4;
+}
+ 
+.category.active{
+background:#e8f0fe;
+font-weight:bold;
+}
+ 
+/* RIGHT PANEL */
+ 
+.details{
+flex:1;
+padding:30px;
+overflow-y:auto;
+min-width: 0;
+}
+ 
+.header{
+display:flex;
+justify-content:space-between;
+align-items:center;
+margin-bottom:25px;
+}
+ 
+.edit-btn{
+background:#0078d4;
+color:white;
+border:none;
+padding:8px 14px;
+border-radius:4px;
+cursor:pointer;
+}
+ 
+.edit-btn:hover{
+background:#005ea2;
+}
+ 
+/* STAT CARDS */
+ 
+.stats{
+display:grid;
+grid-template-columns:repeat(4,1fr);
+gap:15px;
+margin-bottom:30px;
+}
+ 
+.card{
+background:white;
+border-radius:8px;
+padding:20px;
+border:1px solid #eee;
+}
+ 
+.card-title{
+font-size:14px;
+color:#777;
+}
+ 
+.card-value{
+font-size:26px;
+font-weight:bold;
+margin-top:5px;
+}
+ 
+/* DETAILS */
+ 
+.section{
+margin-bottom:25px;
+}
+ 
+.section h3{
+margin-bottom:10px;
+}
+ 
+.value{
+background:white;
+padding:10px;
+border-radius:6px;
+border:1px solid #ddd;
+margin-bottom:6px;
+}
+ 
+.empty{
+color:#888;
+font-style:italic;
+}
+ 
+/* TEMPLATE LIST */
+ 
+.template{
+padding:10px;
+border:1px solid #ddd;
+border-radius:6px;
+margin-bottom:8px;
+background:white;
+font-weight:500;
+}
+ 
+/* MODAL BACKGROUND */
+ 
+.modal{
+display:none;
+position:fixed;
+z-index:1000;
+left:0;
+top:0;
+width:100%;
+height:100%;
+background:rgba(0,0,0,0.45);
+align-items:center;
+justify-content:center;
+}
+ 
+/* MODAL BOX */
+ 
+.modal-content{
+background:white;
+width:640px;
+border-radius:10px;
+box-shadow:0 10px 30px rgba(0,0,0,0.2);
+display:flex;
+flex-direction:column;
+max-height:85vh;
+}
+ 
+/* MODAL HEADER */
+ 
+.modal-header{
+padding:20px 24px;
+border-bottom:1px solid #eee;
+font-size:18px;
+font-weight:bold;
+}
+ 
+/* MODAL BODY */
+ 
+.modal-body{
+padding:20px 24px;
+overflow-y:auto;
+flex:1;
+}
+ 
+/* FORM */
+ 
+.modal label{
+font-size:14px;
+font-weight:bold;
+display:block;
+margin-top:10px;
+margin-bottom:5px;
+}
+ 
+.modal input,
+.modal select{
+width:100%;
+padding:9px;
+border-radius:6px;
+border:1px solid #ccc;
+margin-bottom:10px;
+}
+ 
+/* TEMPLATE EDITOR */
+ 
+.template-row{
+display:flex;
+gap:10px;
+align-items:center;
+margin-bottom:10px;
+}
+ 
+.template-row select{
+flex:1;
+}
+ 
+.template-row button{
+background:#ff4d4f;
+border:none;
+color:white;
+padding:7px 10px;
+border-radius:4px;
+cursor:pointer;
+}
+ 
+.template-row button:hover{
+background:#d9363e;
+}
+ 
+.add-template{
+margin-top:5px;
+background:#e8f0fe;
+border:none;
+padding:8px 12px;
+border-radius:6px;
+cursor:pointer;
+}
+ 
+.add-template:hover{
+background:#d2e3fc;
+}
+ 
+/* MODAL FOOTER */
+ 
+.modal-actions{
+border-top:1px solid #eee;
+padding:15px 24px;
+display:flex;
+justify-content:flex-end;
+gap:10px;
+background:white;
+}
+ 
+.save-btn{
+background:#0078d4;
+color:white;
+border:none;
+padding:9px 16px;
+border-radius:6px;
+cursor:pointer;
+}
+ 
+.save-btn:hover{
+background:#005ea2;
+}
+ 
+.cancel-btn{
+background:#eee;
+border:none;
+padding:9px 16px;
+border-radius:6px;
+cursor:pointer;
+}
+ 
+</style>
+</head>
+ 
+<body>
+
+ 
+<div class="container">
+ 
+<div class="sidebar">
+<h2>Categories</h2>
+<div id="categoryList"></div>
+</div>
+ 
+<div class="details" id="detailsPanel">
+<h2>Select a Category</h2>
+<p class="empty">Click a category to view details</p>
+</div>
+ 
+</div>
+ 
+<div id="editModal" class="modal">
+<div class="modal-content">
+ 
+<div class="modal-header">
+Edit Category
+</div>
+ 
+<div class="modal-body">
+ 
+<input type="hidden" id="edit_category_name">
+<input type="hidden" id="edit_category_version">
+
+ 
+<label>Max Attempts</label>
+<input type="number" id="edit_max_attempts">
+ 
+<label>Interval Minutes</label>
+<input type="number" id="edit_interval">
+ 
+<label>Mode</label>
+<select id="edit_mode" onchange="toggleMode()">
+<option value="manual">Manual</option>
+<option value="template">Template</option>
+</select>
+ 
+<!-- MANUAL FOLLOWUP TEXT -->
+ 
+<div id="manualBox" style="display:none">
+ 
+<label>Follow-up Text</label>
+<textarea id="edit_followup_text" rows="5" style="width:100%; padding:10px; border-radius:6px; border:1px solid #ccc;"></textarea>
+ 
+</div>
+<div style="margin-top:15px">
+ 
+<label style="display:flex;align-items:center;gap:2px;font-weight:normal">
+<input type="checkbox" id="restart_sequences">
+Restart follow-up sequence for active conversations
+</label>
+ 
+<div style="font-size:12px;color:#666;margin-top:5px">
+If checked, all active conversations will restart from attempt 1 using the new settings.
+</div>
+ 
+</div>
+ 
+<!-- TEMPLATE MODE -->
+ 
+<div id="templateBox">
+ 
+<h4>Template Sequence</h4>
+ 
+<div id="templateEditor"></div>
+ 
+<button class="add-template" type="button" onclick="addTemplate()">
++ Add Template
+</button>
+ 
+</div>
+ 
+ 
+</div>
+ 
+<div class="modal-actions">
+ 
+<button class="cancel-btn" onclick="closeEdit()">Cancel</button>
+ 
+<button class="save-btn" onclick="saveCategory()">Save</button>
+ 
+</div>
+ 
+</div>
+</div>
+ 
+<script>
+
+function toggleMode(){
+ 
+const mode=document.getElementById("edit_mode").value
+ 
+const manualBox=document.getElementById("manualBox")
+const templateBox=document.getElementById("templateBox")
+ 
+if(mode==="manual"){
+ 
+manualBox.style.display="block"
+templateBox.style.display="none"
+ 
+}else{
+ 
+manualBox.style.display="none"
+templateBox.style.display="block"
+ 
+}
+ 
+}
+ 
+
+ 
+/* LOAD CATEGORY LIST */
+ 
+function loadCategories(){
+ 
+fetch("/api/categories")
+.then(res => res.json())
+.then(data => {
+ 
+const container = document.getElementById("categoryList")
+container.innerHTML = ""
+ 
+data.forEach(bucket => {
+ 
+const categoryDiv = document.createElement("div")
+categoryDiv.className = "category"
+categoryDiv.innerText = bucket.name
+ 
+const versionsDiv = document.createElement("div")
+versionsDiv.style.display = "none"
+versionsDiv.style.paddingLeft = "20px"
+ 
+bucket.versions.forEach((v,index)=> {
+ 
+const versionDiv = document.createElement("div")
+versionDiv.className = "category small"
+versionDiv.style.fontSize = "14px"
+versionDiv.style.background = "#fafafa"
+if(index===0){
+  versionDiv.innerText = "v" + v +" (current)"
+  versionDiv.classList.add("current-version")
+}
+else{
+  versionDiv.innerText = "v" + v
+}
+
+ 
+versionDiv.onclick = function(e){
+e.stopPropagation()
+loadCategory(bucket.name, v, versionDiv,bucket.versions[0])
+}
+ 
+versionsDiv.appendChild(versionDiv)
+ 
+})
+ 
+categoryDiv.onclick = function(){
+ 
+const open = versionsDiv.style.display === "block"
+versionsDiv.style.display = open ? "none" : "block"
+ 
+}
+ 
+container.appendChild(categoryDiv)
+container.appendChild(versionsDiv)
+ 
+})
+ 
+})
+ 
+}
+ 
+/* LOAD CATEGORY DETAILS */
+ 
+function loadCategory(name,version, element,latestVersion){
+
+const isEditable=Number(version)===Number(latestVersion);
+ 
+document.querySelectorAll(".category").forEach(c=>c.classList.remove("active"))
+element.classList.add("active")
+ 
+fetch(`/category/${encodeURIComponent(name)}/${version}`)
+.then(res=>res.json())
+.then(data=>{
+ 
+function show(val){
+if(val===null || val===undefined || val===""){
+return '<span class="empty">Not set</span>'
+}
+return val
+}
+ 
+const stats = data.stats || {}
+ 
+let templatesHTML=""
+ 
+if(data.templates && data.templates.length>0){
+ 
+templatesHTML=data.templates.map(t=>{
+ 
+let order = t.order ?? ""
+let subject = t.subject ?? "Template"
+ 
+if(order){
+return `<div class="template">Template ${order} — ${subject}</div>`
+}
+ 
+return `<div class="template">${subject}</div>`
+ 
+}).join("")
+ 
+}else{
+ 
+templatesHTML='<div class="empty">No templates</div>'
+ 
+}
+ 
+const html=`
+ 
+<div class="header">
+<h2>${name}(v${version})</h2>
+${isEditable ? `<button class="edit-btn" onclick="openEdit('${name}',${version})">Edit</button>`:`<button class="edit-btn" onclick="cloneCategory('${name}',${version})">Clone Version</button>`}
+</div>
+ 
+<div class="stats">
+
+ 
+<div class="card">
+<div class="card-title">Tagged Mails</div>
+<div class="card-value">${show(stats.total)}</div>
+</div>
+ 
+<div class="card">
+<div class="card-title">Active</div>
+<div class="card-value">${show(stats.active)}</div>
+</div>
+ 
+<div class="card">
+<div class="card-title">Client Paused</div>
+<div class="card-value">${show(stats.client_paused)}</div>
+</div>
+<div class="card">
+<div class="card-title">Manual Paused</div>
+<div class="card-value">${show(stats.manual_paused)}</div>
+</div>
+ 
+<div class="card">
+<div class="card-title">Completed</div>
+<div class="card-value">${show(stats.completed)}</div>
+</div>
+
+${stats.active > 0 ? `
+<div style="
+background:#fff3cd;
+border:1px solid #ffeeba;
+padding:12px;
+border-radius:6px;
+margin-bottom:20px;
+font-size:14px;
+">
+⚠ This category has <b>${stats.active}</b> active conversations.
+Editing follow-up settings may affect future followups.
+</div>
+` : ""}
+ 
+</div>
+ 
+<div class="section">
+<h3>Followup Settings</h3>
+<div class="value">Mode: ${show(data.mode)}</div>
+<div class="value">Max Attempts: ${show(data.max_attempts)}</div>
+<div class="value">Interval Minutes: ${show(data.interval_minutes)}</div>
+</div>
+ 
+<div class="section">
+<h3>Followup Text</h3>
+<div class="value">${show(data.followup_text)}</div>
+</div>
+ 
+<div class="section">
+<h3>Templates</h3>
+${templatesHTML}
+</div>
+ 
+<div class="section">
+<h3>Last Updated</h3>
+<div class="value">${show(data.updated_at)}</div>
+</div>
+ 
+`
+ 
+document.getElementById("detailsPanel").innerHTML=html
+ 
+})
+ 
+}
+async function cloneCategory(name,version){
+ 
+if(!confirm(`Clone ${name} v${version} as a new version?`)){
+ return
+}
+ 
+const res = await fetch("/clone_category",{
+ method:"POST",
+ headers:{
+  "Content-Type":"application/json"
+ },
+ body:JSON.stringify({
+  category_name:name,
+  version:version
+ })
+})
+ 
+const data = await res.json()
+ 
+if(res.ok && data.success){
+ 
+ alert(`Version cloned as v${data.version}successfully`)
+ 
+ loadCategories()
+ 
+}else{
+ 
+ alert("Clone failed: " + (data.error || "Unknown error"))
+ 
+ console.error("Clone error:", data)
+ 
+}
+ 
+}
+ 
+ 
+ 
+/* OPEN EDIT MODAL */
+ 
+async function openEdit(name,version){
+ 
+await loadDrafts()
+ 
+const res = await fetch(`/category/${encodeURIComponent(name)}/${version}`)
+const data = await res.json()
+ 
+document.getElementById("edit_category_name").value=name
+document.getElementById("edit_category_version").value=version
+document.getElementById("edit_max_attempts").value=data.max_attempts
+document.getElementById("edit_interval").value=data.interval_minutes
+document.getElementById("edit_mode").value=data.mode
+document.getElementById("edit_followup_text").value=data.followup_text || ""
+toggleMode()
+ 
+const container=document.getElementById("templateEditor")
+container.innerHTML=""
+ 
+/* EXISTING TEMPLATE SEQUENCE */
+ 
+if(data.templates && data.templates.length>0){
+ 
+data.templates.forEach(t=>{
+ 
+let matchedDraft = draftList.find(d => d.subject === t.subject)
+ 
+if(matchedDraft){
+addTemplateRow(matchedDraft.id)
+}else{
+addTemplateRow("") 
+}
+ 
+})
+ 
+}else{
+ 
+/* If no templates exist show one row */
+addTemplateRow()
+ 
+}
+ 
+document.getElementById("editModal").style.display="flex"
+ 
+}
+ 
+ 
+/* TEMPLATE ROW */
+ 
+let draftList=[]
+ 
+function loadDrafts(){
+ 
+return fetch("/fetch_drafts")
+.then(res=>res.json())
+.then(data=>{
+ 
+draftList = data.value || []
+ 
+})
+ 
+}
+ 
+function addTemplateRow(id="",subject=""){
+ 
+const container=document.getElementById("templateEditor")
+ 
+const div=document.createElement("div")
+div.className="template-row"
+ 
+let options=`<option value="">Select Draft Template</option>`
+ 
+draftList.forEach(d=>{
+ 
+const selected = d.id===id ? "selected" : ""
+ 
+options+=`<option value="${d.id}" ${selected}>${d.subject || "No Subject"}</option>`
+ 
+})
+ 
+div.innerHTML=`
+ 
+<select class="template-id">
+${options}
+</select>
+ 
+<input type="hidden" class="template-subject" value="${subject}">
+ 
+<button onclick="removeTemplate(this)">Remove</button>
+ 
+`
+ 
+container.appendChild(div)
+ 
+}
+ 
+function addTemplate(){
+addTemplateRow()
+}
+ 
+function removeTemplate(btn){
+btn.parentElement.remove()
+}
+ 
+/* CLOSE MODAL */
+ 
+function closeEdit(){
+document.getElementById("editModal").style.display="none"
+}
+ 
+/* SAVE CATEGORY */
+let saving=false
+ 
+function saveCategory(){
+ 
+ if (saving) return
+ saving=true
+ 
+const name=document.getElementById("edit_category_name").value
+const version=document.getElementById("edit_category_version").value
+const max_attempts=document.getElementById("edit_max_attempts").value
+const interval=document.getElementById("edit_interval").value
+const mode=document.getElementById("edit_mode").value
+const followup_text=document.getElementById("edit_followup_text").value
+const restart_sequences=document.getElementById("restart_sequences").checked
+ 
+const templates=[]
+ 
+document.querySelectorAll("#templateEditor .template-row").forEach(row=>{
+ 
+const select=row.querySelector(".template-id")
+ 
+const draftId=select.value
+const subject=select.options[select.selectedIndex]?.text || ""
+ 
+if(draftId){
+templates.push({
+id:draftId,
+subject:subject
+})
+}
+ 
+})
+ 
+fetch("/update_category",{
+method:"POST",
+headers:{"Content-Type":"application/json"},
+body:JSON.stringify({
+category_name:name,
+version:version,
+max_attempts:max_attempts,
+interval_minutes:interval,
+mode:mode,
+followup_text:followup_text,
+templates:templates,
+restart_sequences:restart_sequences
+})
+})
+ 
+.then(res=>{
+ if(!res.ok){
+   throw new Error("Server error")
+ }
+ return res.json()
+})
+ 
+.then(data=>{
+ 
+saving=false
+ 
+// ✅ close modal
+closeEdit()
+ 
+// ✅ reload categories
+loadCategories()
+ 
+// ✅ reload the edited category after list refresh
+setTimeout(()=>{
+ 
+const items=document.querySelectorAll(".category")
+ 
+for(const el of items){
+  if(el.innerText.includes(name)){
+   el.click()
+   break
+  }
+}
+ 
+},200)
+ 
+})
+ 
+.catch(err=>{
+ 
+saving=false
+console.error("Update failed:",err)
+alert("Failed to update category")
+ 
+})
+ 
+}
+ 
+/* PAGE LOAD */
+ 
+document.addEventListener("DOMContentLoaded",function(){
+    loadCategories()
+
+    const modal=document.getElementById("editModal")
+    modal.onclick=function(e){
+        if(e.target===modal){
+            closeEdit()
+        }
+    }
+})
+ 
+</script>
+ 
+</body>
+</html>
+ 
