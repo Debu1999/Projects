@@ -3373,7 +3373,54 @@ def restart(id):
             flash(f"Followup ID {id} restarted successfully.")
  
     return redirect(url_for("dashboard"))
+@app.route("/workspaces", methods=["POST"])
+def create_workspace_route():
+    try:
+        data = request.get_json()
  
+        if not data:
+            return jsonify({
+                "error": "Request body is required."
+            }), 400
+ 
+        workspace_name = str(
+            data.get("workspace_name", "")
+        ).strip()
+ 
+        description = str(
+            data.get("description", "")
+        ).strip()
+ 
+        if not workspace_name:
+            return jsonify({
+                "error": "Workspace name is required."
+            }), 400
+ 
+        workspace_id = create_workspace(
+            workspace_name,
+            description
+        )
+ 
+        return jsonify({
+            "success": True,
+            "workspace": {
+                "id": workspace_id,
+                "workspace_name": workspace_name,
+                "description": description
+            }
+        }), 201
+ 
+    except sqlite3.IntegrityError:
+        return jsonify({
+            "error": "A workspace with this name already exists."
+        }), 409
+ 
+    except Exception as e:
+        print("Create workspace error:", str(e))
+ 
+        return jsonify({
+            "error": str(e)
+        }), 500
  
 @app.route("/pause/<int:id>")
 def pause(id):
