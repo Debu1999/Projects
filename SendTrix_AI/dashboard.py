@@ -23,7 +23,7 @@ from db import get_latest_external_responder,get_workspaces,create_workspace,add
 from agent_service import rephrase_draft_body
 from db import update_ai_draft_status,get_workspace_rows
 from agent_service import analyze_reply, clean_email_body
-from db import get_ai_draft, save_ai_draft,insert_evidence_upload,update_ai_result
+from db import get_ai_draft, save_ai_draft,insert_evidence_upload,update_ai_result,get_rows
 from zoneinfo import ZoneInfo
 from trackora_nl_query import natural_language_to_sql, run_safe_query
 from trackora.evidence.extractor import extract
@@ -40,20 +40,6 @@ app.secret_key = "super_secret_key"
 UPLOAD_FOLDER="uploads/Evidence" 
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 
-
- 
-# ===============================
-# Convert UTC → IST
-# ===============================
-def to_ist(utc_string):
-    if not utc_string:
-        return ""
-    try:
-        utc_time = datetime.fromisoformat(utc_string)
-        ist_time = utc_time + timedelta(hours=5, minutes=30)
-        return ist_time.strftime("%d %b %Y, %I:%M %p IST")
-    except:
-        return utc_string
  
 def get_dashboard_counts():
     conn = get_connection()
@@ -80,69 +66,7 @@ def get_dashboard_counts():
 # ===============================
 # Fetch Rows
 # ===============================
-def get_rows():
-    #conn = sqlite3.connect(DB_NAME)
-    conn=get_connection()
-    cursor = conn.cursor()
- 
-    cursor.execute("""
-        SELECT f.id,
-               f.subject,
-               f.category_name,
-               f.category_version,
-               f.status,
-               f.attempt_count,
-               s.max_attempts,
-               f.next_followup_at,
-               f.last_followup_sent_at,
-               f.updated_at,
-               f.last_reply_subject,
-               f.last_reply_body,
-               f.last_client_email,
-               f.is_unread_reply,
-               f.conversation_id,
-               f.last_reply_message_id,
-               f.ai_draft_body,
-               f.ai_draft_reasoning,
-               f.ai_draft_status,
-               f.auto_followup_enabled
-        FROM followups f
-        LEFT JOIN settings s
-        ON f.category_name = s.category_name
-        AND f.category_version=s.version
-        ORDER BY f.next_followup_at
-    """)
- 
-    rows = cursor.fetchall()
-    conn.close()
- 
-    formatted = []
-    for row in rows:
-        print("STATUS FROM DB:",row[4])
-        formatted.append((
-            row[0],  # id
-            row[1],  # subject
-            f"{row[2]}(v{row[3]})",  # category + version
-            row[4],  # status
-            row[5],  # attempt_count
-            row[6] if row[6] else 0,  # max_attempts
-            to_ist(row[7]),
-            to_ist(row[9]),
-            to_ist(row[8]),
-            row[10],
-            row[11],
-            row[12],
-            row[13],
-            row[14],
-            row[15],
-            row[16],
-            row[17],
-            row[18],
-            row[19]
-            #print("Debug Message ID:",row[14])
-        ))
- 
-    return formatted
+
 @app.route("/trackora/upload_evidence", methods=["POST"])
 def upload_evidence():
  
@@ -3388,7 +3312,6 @@ def workspace_detail(workspace_id):
  
     try:
  
-        # Get workspace information
         conn = get_connection()
         cursor = conn.cursor()
  
@@ -3419,14 +3342,50 @@ def workspace_detail(workspace_id):
             "status": workspace_row[4]
         }
  
-        # Get conversations assigned to this workspace
-        workspace_rows = get_workspace_rows(workspace_id)
+        # Get ONLY conversations belonging to this workspace
+        rows = get_workspace_rows(workspace_id)
+ 
+        # Calculate workspace-specific counts
+        active_count = sum(
+            1 for row in rows
+            if row[3] == "ACTIVE"
+        )
+ 
+        completed_count = sum(
+            1 for row in rows
+            if row[3] == "COMPLETED"
+        )
+ 
+        client_reply_count = sum(
+            1 for row in rows
+            if row[3] == "CLIENT_REPLY"
+        )
+ 
+        manual_pause_count = sum(
+            1 for row in rows
+            if row[3] == "MANUAL_PAUSED"
+        )
+ 
+        total_count = len(rows)
  
         return render_template(
             "workspace_detail.html",
+ 
             title=workspace["workspace_name"],
+ 
             workspace=workspace,
-            rows=workspace_rows
+ 
+            rows=rows,
+ 
+            active_count=active_count,
+            completed_count=completed_count,
+            client_reply_count=client_reply_count,
+            manual_pause_count=manual_pause_count,
+            total_count=total_count,
+ 
+            unread_replies=get_unread_replies(),
+ 
+            search=""
         )
  
     except Exception as e:
@@ -3437,6 +3396,42 @@ def workspace_detail(workspace_id):
         )
  
         return "Failed to load workspace.", 500
+@app.route("/workspace/<int:workspace_id>/remove/<conversation_id>", methods=["POST"])
+def remove_from_workspace(workspace_id, conversation_id):
+ 
+    try:
+ 
+        conn = get_connection()
+        cursor = conn.cursor()
+ 
+        cursor.execute("""
+            DELETE FROM workspace_conversations
+            WHERE workspace_id = ?
+            AND conversation_id = ?
+        """, (
+            workspace_id,
+            conversation_id
+        ))
+ 
+        conn.commit()
+        conn.close()
+ 
+        return jsonify({
+            "success": True
+        })
+ 
+    except Exception as e:
+ 
+        print(
+            "Remove from workspace error:",
+            str(e)
+        )
+ 
+        return jsonify({
+            "success": False,
+            "error": str(e)
+        }), 500
+ 
  
 @app.route("/workspaces/assign", methods=["POST"])
 def assign_conversations_to_workspace():

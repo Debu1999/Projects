@@ -7,7 +7,7 @@ import sys
 import json
 from auth import get_access_token
 from graph_client import get_full_message,get_latest_message_in_conversation,get_current_user_email,get_messages_in_conversation
-from dashboard import get_rows
+from datetime import datetime, timedelta, timezone
 
 if getattr(sys,'frozen',False):
     BASE_DIR=os.path.dirname(sys.executable)
@@ -2002,6 +2002,81 @@ def insert_snapshot_bulk(cursor, upload_id, row):
         row.get("exception_reason", ""),
         now
     ))
+# ===============================
+# Convert UTC → IST
+# ===============================
+def to_ist(utc_string):
+    if not utc_string:
+        return ""
+    try:
+        utc_time = datetime.fromisoformat(utc_string)
+        ist_time = utc_time + timedelta(hours=5, minutes=30)
+        return ist_time.strftime("%d %b %Y, %I:%M %p IST")
+    except:
+        return utc_string
+def get_rows():
+    #conn = sqlite3.connect(DB_NAME)
+    conn=get_connection()
+    cursor = conn.cursor()
+ 
+    cursor.execute("""
+        SELECT f.id,
+               f.subject,
+               f.category_name,
+               f.category_version,
+               f.status,
+               f.attempt_count,
+               s.max_attempts,
+               f.next_followup_at,
+               f.last_followup_sent_at,
+               f.updated_at,
+               f.last_reply_subject,
+               f.last_reply_body,
+               f.last_client_email,
+               f.is_unread_reply,
+               f.conversation_id,
+               f.last_reply_message_id,
+               f.ai_draft_body,
+               f.ai_draft_reasoning,
+               f.ai_draft_status,
+               f.auto_followup_enabled
+        FROM followups f
+        LEFT JOIN settings s
+        ON f.category_name = s.category_name
+        AND f.category_version=s.version
+        ORDER BY f.next_followup_at
+    """)
+ 
+    rows = cursor.fetchall()
+    conn.close()
+ 
+    formatted = []
+    for row in rows:
+        print("STATUS FROM DB:",row[4])
+        formatted.append((
+            row[0],  # id
+            row[1],  # subject
+            f"{row[2]}(v{row[3]})",  # category + version
+            row[4],  # status
+            row[5],  # attempt_count
+            row[6] if row[6] else 0,  # max_attempts
+            to_ist(row[7]),
+            to_ist(row[9]),
+            to_ist(row[8]),
+            row[10],
+            row[11],
+            row[12],
+            row[13],
+            row[14],
+            row[15],
+            row[16],
+            row[17],
+            row[18],
+            row[19]
+            #print("Debug Message ID:",row[14])
+        ))
+ 
+    return formatted
 def insert_raw_snapshot_bulk(
     cursor,
     upload_id,
@@ -2565,15 +2640,39 @@ def get_workspace_rows(workspace_id):
     )
  
     conversation_ids = {
-        item["conversation_id"]
+        str(item["conversation_id"])
         for item in workspace_conversations
     }
  
-    return [
+    print("===================================")
+    print("WORKSPACE ID:", workspace_id)
+    print("WORKSPACE CONVERSATIONS:", workspace_conversations)
+    print("WORKSPACE CONVERSATION IDS:", conversation_ids)
+ 
+    print("ALL SENDTRIX ROW IDS:")
+ 
+    for row in rows:
+        print(
+            "ID:",
+            row[14],
+            "TYPE:",
+            type(row[14])
+        )
+ 
+    print("===================================")
+ 
+    filtered_rows = [
         row
         for row in rows
-        if row[14] in conversation_ids
+        if str(row[14]) in conversation_ids
     ]
+ 
+    print(
+        "MATCHED WORKSPACE ROWS:",
+        len(filtered_rows)
+    )
+ 
+    return filtered_rows
  
  
  
