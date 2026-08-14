@@ -21,7 +21,7 @@ from db import get_template_folders,save_template_folders_settings,get_unread_re
 from db import save_comment,run_comparison,insert_raw_snapshot_bulk,get_recommended_action,get_send_mail_flag,get_all_recommended_actions,get_action_mappings
 from db import get_latest_external_responder,get_workspaces,create_workspace,add_conversation_to_workspace
 from agent_service import rephrase_draft_body
-from db import update_ai_draft_status,get_workspace_rows
+from db import update_ai_draft_status,get_workspace_rows,move_conversation_to_workspace,remove_conversation_from_workspace
 from agent_service import analyze_reply, clean_email_body
 from db import get_ai_draft, save_ai_draft,insert_evidence_upload,update_ai_result,get_rows
 from zoneinfo import ZoneInfo
@@ -3432,7 +3432,91 @@ def remove_from_workspace(workspace_id, conversation_id):
             "error": str(e)
         }), 500
  
+@app.route(
+    "/workspace/<int:workspace_id>/move/<conversation_id>",
+    methods=["POST"]
+)
+def move_workspace_conversation(workspace_id, conversation_id):
  
+    try:
+ 
+        data = request.get_json()
+ 
+        if not data:
+            return jsonify({
+                "success": False,
+                "error": "Request body is required."
+            }), 400
+ 
+        new_workspace_id = data.get("workspace_id")
+ 
+        if not new_workspace_id:
+            return jsonify({
+                "success": False,
+                "error": "Target workspace is required."
+            }), 400
+ 
+        new_workspace_id = int(new_workspace_id)
+ 
+        # Prevent moving to the same workspace
+        if new_workspace_id == workspace_id:
+            return jsonify({
+                "success": False,
+                "error": "Conversation is already in this workspace."
+            }), 400
+ 
+        # Make sure the conversation actually belongs
+        # to the current workspace
+        conn = get_connection()
+        cursor = conn.cursor()
+ 
+        cursor.execute("""
+            SELECT id
+            FROM workspace_conversations
+            WHERE workspace_id = ?
+            AND conversation_id = ?
+        """, (
+            workspace_id,
+            conversation_id
+        ))
+ 
+        existing = cursor.fetchone()
+ 
+        conn.close()
+ 
+        if not existing:
+            return jsonify({
+                "success": False,
+                "error": "Conversation is not in this workspace."
+            }), 404
+ 
+        # Use the existing DB function
+        moved = move_conversation_to_workspace(
+            conversation_id,
+            new_workspace_id
+        )
+ 
+        if not moved:
+            return jsonify({
+                "success": False,
+                "error": "Conversation could not be moved."
+            }), 404
+ 
+        return jsonify({
+            "success": True
+        })
+ 
+    except Exception as e:
+ 
+        print(
+            "Move workspace conversation error:",
+            str(e)
+        )
+ 
+        return jsonify({
+            "success": False,
+            "error": str(e)
+        }), 500
 @app.route("/workspaces/assign", methods=["POST"])
 def assign_conversations_to_workspace():
  

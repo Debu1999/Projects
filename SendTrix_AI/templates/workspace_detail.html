@@ -285,6 +285,10 @@ onkeyup="filterFollowups()"
                         <a href="/reset/{{row[0]}}" onclick="return confirm('Reset this follow-up?')">
                             <button class="secondary-btn" data-intro="Use this to reset your followups" data-step="12">Reset</button>
                         </a>
+                        <button type="button" class="secondary-btn" onclick="openMoveWorkspaceModal('{{ row[14] }}')">
+                            <i class="fa-solid fa-arrow-right"></i>
+                            Move
+                        </button>
                         <button type="button" class="danger-btn" onclick="removeFromWorkspace('{{ row[14] }}')">
                             <i class="fa-solid fa-folder-minus"></i>
                             Remove
@@ -645,6 +649,53 @@ onkeyup="filterFollowups()"
     <button onclick="replyNow()">Reply</button>
     <button onclick="ignoreNow()">Ignore</button>
     <button onclick="closeReplyModal()">Close</button>
+ 
+</div>
+<!-- MOVE CONVERSATION MODAL -->
+ 
+<div id="moveWorkspaceModal" class="modal">
+ 
+    <div class="modal-content">
+ 
+        <span
+            class="close"
+            onclick="closeMoveWorkspaceModal()"
+        >
+            &times;
+        </span>
+ 
+        <h3>
+            <i class="fa-solid fa-arrow-right"></i>
+            Move Conversation
+        </h3>
+ 
+        <p style="color:#6b7280;">
+            Select the workspace where you want to move this conversation.
+        </p>
+ 
+        <div id="moveWorkspaceList">
+            Loading workspaces...
+        </div>
+ 
+        <br>
+ 
+        <button
+            type="button"
+            class="secondary-btn"
+            onclick="closeMoveWorkspaceModal()"
+        >
+            Cancel
+        </button>
+ 
+        <button
+            type="button"
+            class="primary-btn"
+            onclick="moveSelectedConversation()"
+        >
+            Move
+        </button>
+ 
+    </div>
  
 </div>
 <script>
@@ -1341,7 +1392,226 @@ async function removeFromWorkspace(conversationId) {
         );
     }
 }
+let conversationToMove = null;
  
+async function openMoveWorkspaceModal(conversationId) {
+ 
+    conversationToMove = conversationId;
+ 
+    const modal =
+        document.getElementById(
+            "moveWorkspaceModal"
+        );
+ 
+    const workspaceList =
+        document.getElementById(
+            "moveWorkspaceList"
+        );
+ 
+    workspaceList.innerHTML =
+        "Loading workspaces...";
+ 
+    modal.style.display = "flex";
+ 
+    try {
+ 
+        const response =
+            await fetch("/api/workspaces");
+ 
+        const data =
+            await response.json();
+ 
+        if (!response.ok) {
+ 
+            throw new Error(
+                data.error ||
+                "Failed to load workspaces."
+            );
+        }
+ 
+        workspaceList.innerHTML = "";
+ 
+        const otherWorkspaces =
+            data.filter(
+                workspace =>
+                    Number(workspace.id)
+                    !== Number({{ workspace.id }})
+            );
+ 
+        if (otherWorkspaces.length === 0) {
+ 
+            workspaceList.innerHTML = `
+                <div style="
+                    padding:15px;
+                    color:#6b7280;
+                    background:#f9fafb;
+                    border-radius:8px;
+                ">
+                    No other workspaces available.
+                    <br><br>
+ 
+                    Create another workspace first.
+                </div>
+            `;
+ 
+            return;
+        }
+ 
+        otherWorkspaces.forEach(
+            workspace => {
+ 
+                const div =
+                    document.createElement("div");
+ 
+                div.style.padding = "10px";
+                div.style.borderBottom =
+                    "1px solid #eee";
+ 
+                div.innerHTML = `
+                    <label style="
+                        display:block;
+                        cursor:pointer;
+                    ">
+ 
+                        <input
+                            type="radio"
+                            name="moveWorkspace"
+                            value="${workspace.id}"
+                        >
+ 
+                        <strong>
+                            ${escapeHtml(
+                                workspace.workspace_name
+                            )}
+                        </strong>
+ 
+                        ${
+                            workspace.description
+                            ? `
+                                <div style="
+                                    margin-left:22px;
+                                    color:#6b7280;
+                                    font-size:13px;
+                                ">
+                                    ${escapeHtml(
+                                        workspace.description
+                                    )}
+                                </div>
+                            `
+                            : ""
+                        }
+ 
+                    </label>
+                `;
+ 
+                workspaceList.appendChild(div);
+ 
+            }
+        );
+ 
+    } catch (error) {
+ 
+        console.error(
+            "Move workspace loading error:",
+            error
+        );
+ 
+        workspaceList.innerHTML = `
+            <p style="color:#d9534f;">
+                Failed to load workspaces.
+            </p>
+        `;
+    }
+}
+ 
+ 
+function closeMoveWorkspaceModal() {
+ 
+    document.getElementById(
+        "moveWorkspaceModal"
+    ).style.display = "none";
+ 
+    conversationToMove = null;
+}
+ 
+ 
+async function moveSelectedConversation() {
+ 
+    if (!conversationToMove) {
+ 
+        alert(
+            "No conversation selected."
+        );
+ 
+        return;
+    }
+ 
+    const selected =
+        document.querySelector(
+            'input[name="moveWorkspace"]:checked'
+        );
+ 
+    if (!selected) {
+ 
+        alert(
+            "Please select a workspace."
+        );
+ 
+        return;
+    }
+ 
+    const targetWorkspaceId =
+        selected.value;
+ 
+    try {
+ 
+        const response =
+            await fetch(
+                `/workspace/{{ workspace.id }}/move/${encodeURIComponent(conversationToMove)}`,
+                {
+                    method: "POST",
+ 
+                    headers: {
+                        "Content-Type":
+                            "application/json"
+                    },
+ 
+                    body: JSON.stringify({
+                        workspace_id:
+                            targetWorkspaceId
+                    })
+                }
+            );
+ 
+        const data =
+            await response.json();
+ 
+        if (!response.ok ||
+            !data.success) {
+ 
+            throw new Error(
+                data.error ||
+                "Failed to move conversation."
+            );
+        }
+ 
+        closeMoveWorkspaceModal();
+ 
+        location.reload();
+ 
+    } catch (error) {
+ 
+        console.error(
+            "Move conversation error:",
+            error
+        );
+ 
+        alert(
+            error.message ||
+            "Failed to move conversation."
+        );
+    }
+}
  
 
 </script>
