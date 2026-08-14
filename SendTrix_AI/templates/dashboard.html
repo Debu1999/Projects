@@ -127,6 +127,7 @@ input:checked + .toggle-slider {
 input:checked + .toggle-slider:before {
     transform: translateX(20px);
 }
+
 </style>
  
  
@@ -161,7 +162,14 @@ input:checked + .toggle-slider:before {
  
 <!-- ACTION BAR -->
 <div class="action-bar">
-    <button class="primary-btn" onclick="openModal()" data-intro="Create a category that defines how followups should be sent." data-step="3"><i class="fa-solid fa-folder-plus"></i> Create Category</button>
+    
+    <div>
+        <button class="primary-btn" onclick="openModal()" data-intro="Create a category that defines how followups should be sent." data-step="3"><i class="fa-solid fa-folder-plus"></i> Create Category</button>
+        <button class="primary-btn"onclick="openWorkspaceAssignment()">
+            <i class="fa-solid fa-folder-tree"></i>
+            Assign to Workspace
+        </button>
+    </div>
     <div>
         <a href="/login"><button class="btn btn-primary" data-intro="Connect to your mailbox" data-step="2"><i class="fa-brands fa-microsoft"></i>Connect Outlook</button></a>
         <a href="/run">
@@ -224,6 +232,7 @@ onkeyup="filterFollowups()"
         <table>
             <thead>
                 <tr>
+                    <th>Select</th>
                     <th>ID</th>
                     <th>Subject</th>
                     <th>Category</th>
@@ -239,6 +248,13 @@ onkeyup="filterFollowups()"
             <tbody>
                 {% for row in rows if row[3] == "ACTIVE" %}
                 <tr>
+                    <td>
+                        <input
+                        type="checkbox"
+                        class="conversation-select"
+                        value="{{ row[14] }}"
+                        >
+                    </td>
                     <td>{{ row[0] }}</td>
                     <td style="max-width: 300px; word-break: break-all;">{{ row[1] }}</td>
                     <td>{{ row[2] }}</td>
@@ -462,7 +478,91 @@ onkeyup="filterFollowups()"
  
 </div>
 </div>
+
+<!-- WORKSPACE ASSIGNMENT MODAL -->
+<div id="workspaceAssignmentModal" class="modal">
  
+    <div class="modal-content workspace-modal">
+ 
+        <span
+            class="close"
+            onclick="closeWorkspaceAssignment()"
+        >
+            &times;
+        </span>
+ 
+        <h3>Assign Conversations to Workspace</h3>
+ 
+        <!-- STEP 1 -->
+        <div id="workspaceStep1">
+ 
+            <p id="selectedConversationCount">
+                Select conversations to assign.
+            </p>
+ 
+            <div id="workspaceConversationList"></div>
+ 
+            <br>
+ 
+            <button
+                class="secondary-btn"
+                onclick="closeWorkspaceAssignment()"
+            >
+                Cancel
+            </button>
+ 
+            <button
+                class="primary-btn"
+                onclick="workspaceNextStep()"
+            >
+                Next
+            </button>
+ 
+        </div>
+ 
+ 
+        <!-- STEP 2 -->
+        <div
+            id="workspaceStep2"
+            style="display:none;"
+        >
+ 
+            <h4>Select Workspace</h4>
+ 
+            <div id="workspaceList">
+                Loading workspaces...
+            </div>
+ 
+            <br>
+ 
+            <button
+                class="secondary-btn"
+                onclick="workspacePreviousStep()"
+            >
+                Back
+            </button>
+ 
+            <button
+                class="secondary-btn"
+                onclick="openCreateWorkspaceFromAssignment()"
+            >
+                <i class="fa-solid fa-plus"></i>
+                Create Workspace
+            </button>
+ 
+            <button
+                class="primary-btn"
+                onclick="assignSelectedConversations()"
+            >
+                Assign
+            </button>
+ 
+        </div>
+ 
+    </div>
+ 
+</div>
+
 <!-- MODAL -->
 <div id="categoryModal" class="modal">
     <div class="modal-content">
@@ -886,6 +986,301 @@ filterFollowups();
 }
  
 });
+
+let selectedWorkspaceConversations = [];
+ 
+function openWorkspaceAssignment() {
+ 
+    const checkboxes =
+        document.querySelectorAll(
+            ".conversation-select:checked"
+        );
+ 
+    if (checkboxes.length === 0) {
+        alert("Please select at least one conversation.");
+        return;
+    }
+ 
+    selectedWorkspaceConversations =
+        Array.from(checkboxes).map(
+            checkbox => checkbox.value
+        );
+ 
+    const list =
+        document.getElementById(
+            "workspaceConversationList"
+        );
+ 
+    list.innerHTML = "";
+ 
+    checkboxes.forEach(checkbox => {
+ 
+        const row = checkbox.closest("tr");
+ 
+        let subject = "Conversation";
+ 
+        if (row) {
+ 
+            const subjectElement =
+                row.querySelector(
+                    ".conversation-subject"
+                );
+ 
+            if (subjectElement) {
+                subject =
+                    subjectElement.innerText;
+            } else {
+                subject =
+                    row.innerText;
+            }
+        }
+ 
+        const div =
+            document.createElement("div");
+ 
+        div.style.padding = "10px";
+        div.style.borderBottom =
+            "1px solid #eee";
+ 
+        div.innerHTML = `
+            <strong>
+                ${escapeHtml(subject)}
+            </strong>
+        `;
+ 
+        list.appendChild(div);
+    });
+ 
+    document.getElementById(
+        "selectedConversationCount"
+    ).innerText =
+        `${checkboxes.length} conversation(s) selected`;
+ 
+    document.getElementById(
+        "workspaceStep1"
+    ).style.display = "block";
+ 
+    document.getElementById(
+        "workspaceStep2"
+    ).style.display = "none";
+ 
+    document.getElementById(
+        "workspaceAssignmentModal"
+    ).style.display = "flex";
+}
+ 
+async function workspaceNextStep() {
+ 
+    if (
+        selectedWorkspaceConversations.length === 0
+    ) {
+        alert("No conversations selected.");
+        return;
+    }
+ 
+    const workspaceList =
+        document.getElementById(
+            "workspaceList"
+        );
+ 
+    workspaceList.innerHTML =
+        "Loading workspaces...";
+ 
+    try {
+ 
+        const response =
+            await fetch("/api/workspaces");
+ 
+        const data =
+            await response.json();
+ 
+        if (!response.ok) {
+ 
+            throw new Error(
+                data.error ||
+                "Failed to load workspaces."
+            );
+        }
+ 
+        workspaceList.innerHTML = "";
+ 
+        if (!data || data.length === 0) {
+ 
+            workspaceList.innerHTML = `
+                <p>
+                    No workspaces exist yet.
+                </p>
+ 
+                <p>
+                    Click "Create Workspace"
+                    to create one.
+                </p>
+            `;
+ 
+        } else {
+ 
+            data.forEach(workspace => {
+ 
+                const div =
+                    document.createElement("div");
+ 
+                div.style.padding = "10px";
+ 
+                div.style.borderBottom =
+                    "1px solid #eee";
+ 
+                div.innerHTML = `
+                    <label>
+ 
+                        <input
+                            type="radio"
+                            name="selectedWorkspace"
+                            value="${workspace.id}"
+                        >
+ 
+                        <strong>
+                            ${escapeHtml(
+                                workspace.workspace_name
+                            )}
+                        </strong>
+ 
+                    </label>
+                `;
+ 
+                workspaceList.appendChild(div);
+            });
+        }
+ 
+        document.getElementById(
+            "workspaceStep1"
+        ).style.display = "none";
+ 
+        document.getElementById(
+            "workspaceStep2"
+        ).style.display = "block";
+ 
+    } catch (error) {
+ 
+        console.error(
+            "Workspace loading error:",
+            error
+        );
+ 
+        alert(
+            "Unable to load workspaces."
+        );
+    }
+}
+ 
+function workspacePreviousStep() {
+ 
+    document.getElementById(
+        "workspaceStep2"
+    ).style.display = "none";
+ 
+    document.getElementById(
+        "workspaceStep1"
+    ).style.display = "block";
+}
+ 
+ 
+function closeWorkspaceAssignment() {
+ 
+    document.getElementById(
+        "workspaceAssignmentModal"
+    ).style.display = "none";
+ 
+    selectedWorkspaceConversations = [];
+}
+ 
+ 
+function openCreateWorkspaceFromAssignment() {
+ 
+    closeWorkspaceAssignment();
+ 
+    window.location.href = "/workspaces";
+}
+async function assignSelectedConversations() {
+ 
+    if (selectedWorkspaceConversations.length === 0) {
+        alert("No conversations selected.");
+        return;
+    }
+ 
+    const selectedWorkspace =
+        document.querySelector(
+            'input[name="selectedWorkspace"]:checked'
+        );
+ 
+    if (!selectedWorkspace) {
+        alert("Please select a workspace.");
+        return;
+    }
+ 
+    const workspaceId = selectedWorkspace.value;
+ 
+    console.log("Assigning conversations:");
+    console.log("Workspace ID:", workspaceId);
+    console.log(
+        "Conversation IDs:",
+        selectedWorkspaceConversations
+    );
+ 
+    try {
+ 
+        const response = await fetch(
+            "/workspaces/assign",
+            {
+                method: "POST",
+ 
+                headers: {
+                    "Content-Type": "application/json"
+                },
+ 
+                body: JSON.stringify({
+                    workspace_id: workspaceId,
+                    conversation_ids:
+                        selectedWorkspaceConversations
+                })
+            }
+        );
+ 
+        const data = await response.json();
+ 
+        console.log(
+            "Assignment response:",
+            data
+        );
+ 
+        if (!response.ok || data.error) {
+            throw new Error(
+                data.error ||
+                "Failed to assign conversations."
+            );
+        }
+ 
+        alert(
+            `${data.assigned.length} conversation(s) assigned successfully.`
+        );
+ 
+        closeWorkspaceAssignment();
+ 
+        location.reload();
+ 
+    } catch (error) {
+ 
+        console.error(
+            "Workspace assignment error:",
+            error
+        );
+ 
+        alert(
+            "Failed to assign conversations: " +
+            error.message
+        );
+    }
+}
+ 
 
 </script>
  

@@ -19,7 +19,7 @@ from auth import get_access_token
 from draft_bulk_sender import ensure_outlook_category_exists
 from db import get_template_folders,save_template_folders_settings,get_unread_replies,ignore_reply,create_new_version,insert_snapshot_bulk
 from db import save_comment,run_comparison,insert_raw_snapshot_bulk,get_recommended_action,get_send_mail_flag,get_all_recommended_actions,get_action_mappings
-from db import get_latest_external_responder
+from db import get_latest_external_responder,get_workspaces,create_workspace,add_conversation_to_workspace
 from agent_service import rephrase_draft_body
 from db import update_ai_draft_status
 from agent_service import analyze_reply, clean_email_body
@@ -3373,7 +3373,104 @@ def restart(id):
             flash(f"Followup ID {id} restarted successfully.")
  
     return redirect(url_for("dashboard"))
-@app.route("/workspaces", methods=["POST"])
+@app.route("/workspaces")
+def workspaces_page():
+ 
+    workspaces = get_workspaces()
+ 
+    return render_template(
+        "workspaces.html",
+        title="",
+        workspaces=workspaces
+    )
+@app.route("/workspaces/assign", methods=["POST"])
+def assign_conversations_to_workspace():
+ 
+    try:
+        data = request.get_json()
+ 
+        if not data:
+            return jsonify({
+                "error": "Request body is required."
+            }), 400
+ 
+        workspace_id = data.get("workspace_id")
+        conversation_ids = data.get("conversation_ids", [])
+
+        print("WORKSPACE ASSIGN REQUEST")
+        print("Workspace:", workspace_id)
+        print("Conversations:", conversation_ids)
+ 
+ 
+        if not workspace_id:
+            return jsonify({
+                "error": "Workspace ID is required."
+            }), 400
+ 
+        if not conversation_ids:
+            return jsonify({
+                "error": "At least one conversation is required."
+            }), 400
+ 
+        assigned = []
+        skipped = []
+ 
+        for conversation_id in conversation_ids:
+ 
+            try:
+ 
+                add_conversation_to_workspace(
+                    int(workspace_id),
+                    conversation_id
+                )
+ 
+                assigned.append(conversation_id)
+ 
+            except Exception as e:
+ 
+                print(
+                    f"Could not assign {conversation_id}: {e}"
+                )
+ 
+                skipped.append({
+                    "conversation_id": conversation_id,
+                    "reason": str(e)
+                })
+ 
+        return jsonify({
+            "success": True,
+            "assigned": assigned,
+            "skipped": skipped
+        }), 200
+ 
+    except Exception as e:
+ 
+        print(
+            "Workspace assignment error:",
+            str(e)
+        )
+ 
+        return jsonify({
+            "error": str(e)
+        }), 500
+ 
+@app.route("/api/workspaces", methods=["GET"])
+def api_get_workspaces():
+ 
+    try:
+ 
+        workspaces = get_workspaces()
+ 
+        return jsonify(workspaces)
+ 
+    except Exception as e:
+ 
+        print("Error loading workspaces:", str(e))
+ 
+        return jsonify({
+            "error": str(e)
+        }), 500
+@app.route("/workspaces/create", methods=["POST"])
 def create_workspace_route():
     try:
         data = request.get_json()
@@ -3421,6 +3518,44 @@ def create_workspace_route():
         return jsonify({
             "error": str(e)
         }), 500
+@app.route("/workspaces/<int:workspace_id>/add-conversation", methods=["POST"])
+def add_conversation_to_workspace_route(workspace_id):
+ 
+    try:
+        data = request.get_json()
+ 
+        if not data:
+            return jsonify({
+                "error": "Request body is required."
+            }), 400
+ 
+        conversation_id = str(
+            data.get("conversation_id", "")
+        ).strip()
+ 
+        if not conversation_id:
+            return jsonify({
+                "error": "Conversation ID is required."
+            }), 400
+ 
+        add_conversation_to_workspace(
+            workspace_id,
+            conversation_id
+        )
+ 
+        return jsonify({
+            "success": True,
+            "message": "Conversation added to workspace."
+        })
+ 
+    except Exception as e:
+ 
+        print("Add conversation to workspace error:", str(e))
+ 
+        return jsonify({
+            "error": str(e)
+        }), 400
+ 
  
 @app.route("/pause/<int:id>")
 def pause(id):

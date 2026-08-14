@@ -1,0 +1,306 @@
+{% extends "base.html" %}
+ 
+{% block content %}
+ 
+<div class="page-title">
+    <h2>
+        <i class="fa-solid fa-layer-group"></i>
+        Workspaces
+    </h2>
+ 
+    <p style="color:#6b7280;">
+        Organize your tracked conversations into workspaces.
+    </p>
+</div>
+ 
+<div style="margin-bottom:20px;">
+ 
+    <button
+        class="primary-btn"
+        onclick="openCreateWorkspaceModal()"
+    >
+        <i class="fa-solid fa-plus"></i>
+        Create Workspace
+    </button>
+ 
+</div>
+ 
+<div id="workspaceList">
+ 
+    <p style="color:#6b7280;">
+        Loading workspaces...
+    </p>
+ 
+</div>
+ 
+<!-- CREATE WORKSPACE MODAL -->
+ 
+<div id="createWorkspaceModal" class="modal">
+ 
+    <div class="modal-content">
+ 
+        <span
+            class="close"
+            onclick="closeCreateWorkspaceModal()"
+        >
+            &times;
+        </span>
+ 
+        <h3>Create Workspace</h3>
+ 
+        <input
+            type="text"
+            id="workspaceName"
+            placeholder="Workspace name"
+        >
+ 
+        <textarea
+            id="workspaceDescription"
+            rows="4"
+            placeholder="Description (optional)"
+        ></textarea>
+ 
+        <button
+            class="primary-btn full-width"
+            onclick="createWorkspace()"
+        >
+            Create Workspace
+        </button>
+ 
+    </div>
+ 
+</div>
+ 
+<script>
+ 
+function openCreateWorkspaceModal() {
+ 
+    document.getElementById(
+        "createWorkspaceModal"
+    ).style.display = "flex";
+ 
+}
+ 
+ 
+function closeCreateWorkspaceModal() {
+ 
+    document.getElementById(
+        "createWorkspaceModal"
+    ).style.display = "none";
+ 
+}
+ 
+ 
+async function loadWorkspaces() {
+ 
+    const container =
+        document.getElementById("workspaceList");
+ 
+    try {
+ 
+        const response =
+            await fetch("/api/workspaces");
+ 
+        const data =
+            await response.json();
+ 
+        if (!response.ok) {
+            throw new Error(
+                data.error || "Failed to load workspaces"
+            );
+        }
+ 
+        if (data.length === 0) {
+ 
+            container.innerHTML = `
+                <div class="table-container">
+                    <p style="color:#6b7280;">
+                        No workspaces created yet.
+                    </p>
+                </div>
+            `;
+ 
+            return;
+        }
+ 
+        container.innerHTML = "";
+ 
+        data.forEach(workspace => {
+ 
+            const card =
+                document.createElement("div");
+ 
+            card.className = "table-container";
+ 
+            card.style.marginBottom = "15px";
+ 
+            card.innerHTML = `
+ 
+                <div style="
+                    display:flex;
+                    justify-content:space-between;
+                    align-items:center;
+                ">
+ 
+                    <div>
+ 
+                        <h3 style="margin:0 0 5px 0;">
+                            <i class="fa-solid fa-folder"></i>
+                            ${escapeHtml(
+                                workspace.workspace_name
+                            )}
+                        </h3>
+ 
+                        <p style="
+                            margin:0;
+                            color:#6b7280;
+                        ">
+                            ${escapeHtml(
+                                workspace.description || ""
+                            )}
+                        </p>
+ 
+                    </div>
+ 
+                    <button
+                        class="secondary-btn"
+                        onclick="openWorkspace(${workspace.id})"
+                    >
+                        Open
+                    </button>
+ 
+                </div>
+ 
+            `;
+ 
+            container.appendChild(card);
+ 
+        });
+ 
+    } catch (error) {
+ 
+        console.error(
+            "Workspace loading error:",
+            error
+        );
+ 
+        container.innerHTML = `
+            <div class="flash">
+                Failed to load workspaces.
+            </div>
+        `;
+ 
+    }
+ 
+}
+ 
+ 
+async function createWorkspace() {
+ 
+    const name =
+        document.getElementById(
+            "workspaceName"
+        ).value.trim();
+ 
+    const description =
+        document.getElementById(
+            "workspaceDescription"
+        ).value.trim();
+ 
+    if (!name) {
+ 
+        alert("Please enter a workspace name.");
+ 
+        return;
+ 
+    }
+ 
+    try {
+ 
+        const response =
+            await fetch(
+                "/api/workspaces",
+                {
+                    method: "POST",
+ 
+                    headers: {
+                        "Content-Type":
+                            "application/json"
+                    },
+ 
+                    body: JSON.stringify({
+                        workspace_name: name,
+                        description: description
+                    })
+                }
+            );
+ 
+        const data =
+            await response.json();
+ 
+        if (!response.ok) {
+ 
+            throw new Error(
+                data.error ||
+                "Failed to create workspace"
+            );
+ 
+        }
+ 
+        document.getElementById(
+            "workspaceName"
+        ).value = "";
+ 
+        document.getElementById(
+            "workspaceDescription"
+        ).value = "";
+ 
+        closeCreateWorkspaceModal();
+ 
+        loadWorkspaces();
+ 
+    } catch (error) {
+ 
+        console.error(
+            "Workspace creation error:",
+            error
+        );
+ 
+        alert(error.message);
+ 
+    }
+ 
+}
+ 
+ 
+function openWorkspace(workspaceId) {
+ 
+    window.location.href =
+        `/workspace/${workspaceId}`;
+ 
+}
+ 
+ 
+function escapeHtml(text) {
+ 
+    const div =
+        document.createElement("div");
+ 
+    div.textContent = text;
+ 
+    return div.innerHTML;
+ 
+}
+ 
+ 
+document.addEventListener(
+    "DOMContentLoaded",
+    function() {
+        loadWorkspaces();
+    }
+);
+ 
+</script>
+ 
+{% endblock %}
+ 
