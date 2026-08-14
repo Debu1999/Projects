@@ -179,8 +179,8 @@ input:checked + .toggle-slider:before {
     </div>
     <div>
         <a href="/login"><button class="btn btn-primary" data-intro="Connect to your mailbox" data-step="2"><i class="fa-brands fa-microsoft"></i>Connect Outlook</button></a>
-        <a href="/run">
-            <button class="secondary-btn" onclick="if(confirmAction('Run followup process now?')){showLoading('Sending Followups...');return true;}return false;" data-intro="Run the engine to send scheduled followups" data-step="6">
+        <a href="/workspace/{{ workspace_id }}/run" onclick="showLoading('Sending Workspace Followups...')">
+            <button class="secondary-btn" onclick="if(confirmAction('Send followups for this workspace?')){showLoading('Sending Followups for your workspace...');return true;}return false;" data-intro="Run the engine to send scheduled followups" data-step="6">
                 <i class="fa-solid fa-paper-plane"></i>
                 Send Followups
             </button>
@@ -191,7 +191,7 @@ input:checked + .toggle-slider:before {
                 Sync Mailbox
             </button>
         </a>
-        <a href="/refresh" onclick="showLoading('Refreshing Conversations...')">
+        <a href="/workspace/{{ workspace_id }}/refresh" onclick="showLoading('Refreshing your Workspace Conversations...')">
             <button class="secondary-btn">
                 <i class="fa-solid fa-comments"></i>
                 Refresh Conversations

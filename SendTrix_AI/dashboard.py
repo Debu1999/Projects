@@ -3248,6 +3248,24 @@ def run_process():
     process()
     flash("Followup process executed successfully.")
     return redirect(url_for("dashboard"))
+@app.route("/workspace/<int:workspace_id>/run")
+def run_workspace_process(workspace_id):
+ 
+    try:
+        process(workspace_id=workspace_id)
+ 
+        flash("Workspace followups processed successfully.")
+ 
+    except Exception as e:
+        print("Workspace process error:", str(e))
+        flash("Error processing workspace followups.")
+ 
+    return redirect(
+        url_for(
+            "workspace_detail",
+            workspace_id=workspace_id
+        )
+    )
  
 @app.route("/refresh")
 def refresh_process():
@@ -3262,6 +3280,36 @@ def refresh_process():
  
     flash("Conversations refreshed successfully.")
     return redirect(url_for("dashboard"))
+@app.route("/workspace/<int:workspace_id>/refresh")
+def refresh_workspace(workspace_id):
+ 
+    try:
+ 
+        refresh_conversations(
+            workspace_id=workspace_id
+        )
+ 
+        flash(
+            "Workspace conversations refreshed successfully."
+        )
+ 
+    except Exception as e:
+ 
+        print(
+            "Workspace refresh error:",
+            str(e)
+        )
+ 
+        flash(
+            "Error refreshing workspace conversations."
+        )
+ 
+    return redirect(
+        url_for(
+            "workspace_detail",
+            workspace_id=workspace_id
+        )
+    )
 
 @app.route("/sync")
 def run_sync():
@@ -3370,6 +3418,7 @@ def workspace_detail(workspace_id):
  
         return render_template(
             "workspace_detail.html",
+            workspace_id=workspace_id,
  
             title=workspace["workspace_name"],
  

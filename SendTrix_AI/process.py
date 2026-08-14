@@ -11,7 +11,9 @@ from db import (
     get_status,
     get_last_client_reply_time,
     get_client_reply_followups,
-    get_active_followups
+    get_active_followups,
+    get_workspace_followup_conversation_ids,
+    get_workspace_conversation_ids
 )
 from agent_service import clean_email_body, analyze_reply
 from db import save_ai_draft
@@ -131,7 +133,7 @@ def did_user_reply_after_client(conversation_id, last_client_reply_time):
     return False
  
 
-def refresh_conversations():
+def refresh_conversations(workspace_id=None):
  
     print("Refreshing conversations")
  
@@ -147,10 +149,30 @@ def refresh_conversations():
         all_rows[conversation_id] = row
     
     rows = list(all_rows.values())
+    # -----------------------------------------
+    # WORKSPACE FILTER
+    # -----------------------------------------
+    if workspace_id is not None:
+ 
+        workspace_conversation_ids = set(
+            get_workspace_conversation_ids(workspace_id)
+        )
+ 
+        rows = [
+            row for row in rows
+            if row[1] in workspace_conversation_ids
+        ]
+ 
+        print(
+            f"Workspace {workspace_id}: "
+            f"{len(rows)} conversations selected for refresh"
+        )
+ 
+    print("Total conversations:", len(rows))
  
     #rows = rows + paused_rows
  
-    print("Total conversations:", len(rows))
+    #print("Total conversations:", len(rows))
  
     for (
         message_id,
@@ -240,13 +262,32 @@ def refresh_conversations():
 # 🚀 MAIN PROCESS (MULTI CATEGORY SAFE)
 # =========================================================
  
-def process():
+def process(workspace_id=None):
     print("Starting process")
     my_email=get_my_email()
     rows = get_due_followups()
     client_reply_rows=get_client_reply_followups()
 
     rows=rows+client_reply_rows
+    # -----------------------------------------
+    # WORKSPACE FILTER
+    # -----------------------------------------
+    if workspace_id is not None:
+        print(f"Filtering for workspace {workspace_id}")
+ 
+        workspace_conversation_ids = set(
+            get_workspace_followup_conversation_ids(workspace_id)
+        )
+ 
+        rows = [
+            row for row in rows
+            if row[1] in workspace_conversation_ids
+        ]
+ 
+        print(
+            f"Workspace {workspace_id}: "
+            f"{len(rows)} conversations eligible for processing"
+        )
     print("\n================ PROCESS START ================")
     print("Due rows:", len(rows))
     for row in rows:
