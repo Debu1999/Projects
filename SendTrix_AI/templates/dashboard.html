@@ -252,7 +252,7 @@ onkeyup="filterFollowups()"
                         <input
                         type="checkbox"
                         class="conversation-select"
-                        value="{{ row[14] }}"
+                        value="{{ row[13] }}"
                         >
                     </td>
                     <td>{{ row[0] }}</td>
@@ -311,6 +311,13 @@ onkeyup="filterFollowups()"
             <tbody>
                 {% for row in rows if row[3] == "CLIENT_REPLY" %}
                 <tr>
+                    <td>
+                        <input
+                        type="checkbox"
+                        class="conversation-select"
+                        value="{{ row[13] }}"
+                        >
+                    </td>
                     <td>{{ row[0] }}</td>
                     <td>{{ row[1] }}
                         {% if row[11] == 1 %}
@@ -394,6 +401,13 @@ onkeyup="filterFollowups()"
             <tbody>
                 {% for row in rows if row[3] == "MANUAL_PAUSED" %}
                 <tr>
+                    <td>
+                        <input
+                        type="checkbox"
+                        class="conversation-select"
+                        value="{{ row[13] }}"
+                        >
+                    </td>
                     <td>{{ row[0] }}</td>
                     <td>{{ row[1] }}</td>
  
@@ -444,6 +458,13 @@ onkeyup="filterFollowups()"
             <tbody>
                 {% for row in rows if row[3] == "COMPLETED" %}
                 <tr>
+                    <td>
+                        <input
+                        type="checkbox"
+                        class="conversation-select"
+                        value="{{ row[13] }}"
+                        >
+                    </td>
                     <td>{{ row[0] }}</td>
                     <td>{{ row[1] }}</td>
                     <td>{{ row[2] }}</td>
@@ -452,7 +473,7 @@ onkeyup="filterFollowups()"
                     <td>{{ row[6] }}</td>
                     <td>{{ row[7] }}</td>
                     <td>
-                        <button class="primary-btn" onclick="openRestartModal({{ row[0] }},'{{ row[2] }}')" data-intro="Use this if you need to restart any followup" data-step="14"><i class="fa-solid fa-rotate-right"></i>Restart</button>
+                        <button class="primary-btn" onclick="openRestartModal('{{ row[0] }}','{{ row[2] }}')" data-intro="Use this if you need to restart any followup" data-step="14"><i class="fa-solid fa-rotate-right"></i>Restart</button>
                     </td>
                 </tr>
                 {% endfor %}

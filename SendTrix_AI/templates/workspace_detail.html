@@ -259,7 +259,7 @@ onkeyup="filterFollowups()"
                         <input
                         type="checkbox"
                         class="conversation-select"
-                        value="{{ row[14] }}"
+                        value="{{ row[13] }}"
                         >
                     </td>
                     <td>{{ row[0] }}</td>
@@ -285,11 +285,11 @@ onkeyup="filterFollowups()"
                         <a href="/reset/{{row[0]}}" onclick="return confirm('Reset this follow-up?')">
                             <button class="secondary-btn" data-intro="Use this to reset your followups" data-step="12">Reset</button>
                         </a>
-                        <button type="button" class="secondary-btn" onclick="openMoveWorkspaceModal('{{ row[14] }}')">
+                        <button type="button" class="secondary-btn" onclick="openMoveWorkspaceModal('{{ row[13] }}')">
                             <i class="fa-solid fa-arrow-right"></i>
                             Move
                         </button>
-                        <button type="button" class="danger-btn" onclick="removeFromWorkspace('{{ row[14] }}')">
+                        <button type="button" class="danger-btn" onclick="removeFromWorkspace('{{ row[13] }}')">
                             <i class="fa-solid fa-folder-minus"></i>
                             Remove
                         </button>
@@ -326,6 +326,13 @@ onkeyup="filterFollowups()"
             <tbody>
                 {% for row in rows if row[3] == "CLIENT_REPLY" %}
                 <tr>
+                    <td>
+                        <input
+                        type="checkbox"
+                        class="conversation-select"
+                        value="{{ row[13] }}"
+                        >
+                    </td>
                     <td>{{ row[0] }}</td>
                     <td>{{ row[1] }}
                         {% if row[11] == 1 %}
@@ -369,6 +376,10 @@ onkeyup="filterFollowups()"
                                 <i class="fa-solid fa-play"></i> Resume
                             </button>
                         </a>
+                        <button type="button" class="secondary-btn" onclick="openMoveWorkspaceModal('{{ row[13] }}')">
+                            <i class="fa-solid fa-arrow-right"></i>
+                            Move
+                        </button>
                         {% if row[11] == 1 %}
                         <form method="POST" action="/ignore_reply" style="display:inline;">
                             <input type="hidden" name="conversation_id" value="{{ row[12] }}">
@@ -409,6 +420,13 @@ onkeyup="filterFollowups()"
             <tbody>
                 {% for row in rows if row[3] == "MANUAL_PAUSED" %}
                 <tr>
+                    <td>
+                        <input
+                        type="checkbox"
+                        class="conversation-select"
+                        value="{{ row[13] }}"
+                        >
+                    </td>
                     <td>{{ row[0] }}</td>
                     <td>{{ row[1] }}</td>
  
@@ -427,6 +445,10 @@ onkeyup="filterFollowups()"
                         <a href="/reset/{{row[0]}}">
                             <button class="secondary-btn">Reset</button>
                         </a>
+                        <button type="button" class="secondary-btn" onclick="openMoveWorkspaceModal('{{ row[13] }}')">
+                            <i class="fa-solid fa-arrow-right"></i>
+                            Move
+                        </button>
                     </td>
  
                 </tr>
@@ -459,6 +481,13 @@ onkeyup="filterFollowups()"
             <tbody>
                 {% for row in rows if row[3] == "COMPLETED" %}
                 <tr>
+                    <td>
+                        <input
+                        type="checkbox"
+                        class="conversation-select"
+                        value="{{ row[13] }}"
+                        >
+                    </td>
                     <td>{{ row[0] }}</td>
                     <td>{{ row[1] }}</td>
                     <td>{{ row[2] }}</td>
@@ -467,7 +496,7 @@ onkeyup="filterFollowups()"
                     <td>{{ row[6] }}</td>
                     <td>{{ row[7] }}</td>
                     <td>
-                        <button class="primary-btn" onclick="openRestartModal({{ row[0] }},'{{ row[2] }}')" data-intro="Use this if you need to restart any followup" data-step="14"><i class="fa-solid fa-rotate-right"></i>Restart</button>
+                        <button class="primary-btn" onclick="openRestartModal('{{ row[0] }}','{{ row[2] }}')" data-intro="Use this if you need to restart any followup" data-step="14"><i class="fa-solid fa-rotate-right"></i>Restart</button>
                     </td>
                 </tr>
                 {% endfor %}
@@ -1263,6 +1292,13 @@ function openCreateWorkspaceFromAssignment() {
     window.location.href = "/workspaces";
 }
 async function assignSelectedConversations() {
+    console.log(
+    "SELECTED CONVERSATIONS:",
+    selectedWorkspaceConversations);
+    
+    console.log(
+    "SELECTED COUNT:",
+    selectedWorkspaceConversations.length);
  
     if (selectedWorkspaceConversations.length === 0) {
         alert("No conversations selected.");

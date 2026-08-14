@@ -23,7 +23,7 @@ from db import get_latest_external_responder,get_workspaces,create_workspace,add
 from agent_service import rephrase_draft_body
 from db import update_ai_draft_status,get_workspace_rows,move_conversation_to_workspace,remove_conversation_from_workspace
 from agent_service import analyze_reply, clean_email_body
-from db import get_ai_draft, save_ai_draft,insert_evidence_upload,update_ai_result,get_rows
+from db import get_ai_draft, save_ai_draft,insert_evidence_upload,update_ai_result,get_rows,debug_followups
 from zoneinfo import ZoneInfo
 from trackora_nl_query import natural_language_to_sql, run_safe_query
 from trackora.evidence.extractor import extract
@@ -3314,6 +3314,7 @@ def refresh_workspace(workspace_id):
 @app.route("/sync")
 def run_sync():
     sync()
+    debug_followups()
     flash("Mailbox sync completed successfully.")
     return redirect(url_for("dashboard"))
  
@@ -3419,13 +3420,8 @@ def workspace_detail(workspace_id):
         return render_template(
             "workspace_detail.html",
             workspace_id=workspace_id,
- 
-            title=workspace["workspace_name"],
- 
             workspace=workspace,
- 
             rows=rows,
- 
             active_count=active_count,
             completed_count=completed_count,
             client_reply_count=client_reply_count,

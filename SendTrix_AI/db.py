@@ -510,7 +510,7 @@ def update_ai_result(
     conn.commit()
     conn.close()
  
- 
+
 def get_ai_draft(conversation_id):
     conn = get_connection()
     cursor = conn.cursor()
@@ -2053,7 +2053,7 @@ def get_rows():
     formatted = []
     for row in rows:
         print("STATUS FROM DB:",row[4])
-        formatted.append((
+        formatted_row=(
             row[0],  # id
             row[1],  # subject
             f"{row[2]}(v{row[3]})",  # category + version
@@ -2074,8 +2074,10 @@ def get_rows():
             row[18],
             row[19]
             #print("Debug Message ID:",row[14])
-        ))
- 
+        )
+        print("COPYING CONVERSATION ID:",row[14])
+        print("FORMATTED CONVERSATION ID:",formatted_row[13])
+        formatted.append(formatted_row)
     return formatted
 def insert_raw_snapshot_bulk(
     cursor,
@@ -2654,9 +2656,9 @@ def get_workspace_rows(workspace_id):
     for row in rows:
         print(
             "ID:",
-            row[14],
+            row[13],
             "TYPE:",
-            type(row[14])
+            type(row[13])
         )
  
     print("===================================")
@@ -2664,7 +2666,7 @@ def get_workspace_rows(workspace_id):
     filtered_rows = [
         row
         for row in rows
-        if str(row[14]) in conversation_ids
+        if str(row[13]) in conversation_ids
     ]
  
     print(
@@ -2704,6 +2706,31 @@ def get_workspace_followup_conversation_ids(workspace_id):
     conn.close()
  
     return [row[0] for row in rows]
+def debug_followups():
+    conn = get_connection()
+    cursor = conn.cursor()
+ 
+    cursor.execute("""
+        SELECT id, message_id, conversation_id, subject
+        FROM followups
+    """)
+ 
+    rows = cursor.fetchall()
+ 
+    print("\n========== FOLLOWUPS DEBUG ==========")
+ 
+    for row in rows:
+        print(
+            "ID:", row[0],
+            "| MESSAGE ID:", row[1],
+            "| CONVERSATION ID:", row[2],
+            "| SUBJECT:", row[3]
+        )
+ 
+    print("=====================================\n")
+ 
+    conn.close()
+ 
  
  
  
