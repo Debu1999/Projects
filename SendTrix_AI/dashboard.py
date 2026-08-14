@@ -21,7 +21,7 @@ from db import get_template_folders,save_template_folders_settings,get_unread_re
 from db import save_comment,run_comparison,insert_raw_snapshot_bulk,get_recommended_action,get_send_mail_flag,get_all_recommended_actions,get_action_mappings
 from db import get_latest_external_responder,get_workspaces,create_workspace,add_conversation_to_workspace
 from agent_service import rephrase_draft_body
-from db import update_ai_draft_status
+from db import update_ai_draft_status,get_workspace_rows
 from agent_service import analyze_reply, clean_email_body
 from db import get_ai_draft, save_ai_draft,insert_evidence_upload,update_ai_result
 from zoneinfo import ZoneInfo
@@ -3383,6 +3383,61 @@ def workspaces_page():
         title="",
         workspaces=workspaces
     )
+@app.route("/workspace/<int:workspace_id>")
+def workspace_detail(workspace_id):
+ 
+    try:
+ 
+        # Get workspace information
+        conn = get_connection()
+        cursor = conn.cursor()
+ 
+        cursor.execute("""
+            SELECT
+                id,
+                workspace_name,
+                description,
+                workspace_type,
+                status
+            FROM workspaces
+            WHERE id = ?
+            AND status = 'ACTIVE'
+        """, (workspace_id,))
+ 
+        workspace_row = cursor.fetchone()
+ 
+        conn.close()
+ 
+        if not workspace_row:
+            return "Workspace not found.", 404
+ 
+        workspace = {
+            "id": workspace_row[0],
+            "workspace_name": workspace_row[1],
+            "description": workspace_row[2],
+            "workspace_type": workspace_row[3],
+            "status": workspace_row[4]
+        }
+ 
+        # Get conversations assigned to this workspace
+        workspace_rows = get_workspace_rows(workspace_id)
+ 
+        return render_template(
+            "workspace_detail.html",
+            title=workspace["workspace_name"],
+            workspace=workspace,
+            rows=workspace_rows
+        )
+ 
+    except Exception as e:
+ 
+        print(
+            "Workspace detail error:",
+            str(e)
+        )
+ 
+        return "Failed to load workspace.", 500
+ 
 @app.route("/workspaces/assign", methods=["POST"])
 def assign_conversations_to_workspace():
  

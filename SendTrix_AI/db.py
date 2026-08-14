@@ -7,6 +7,7 @@ import sys
 import json
 from auth import get_access_token
 from graph_client import get_full_message,get_latest_message_in_conversation,get_current_user_email,get_messages_in_conversation
+from dashboard import get_rows
 
 if getattr(sys,'frozen',False):
     BASE_DIR=os.path.dirname(sys.executable)
@@ -2555,6 +2556,25 @@ def get_workspace_conversations(workspace_id):
         }
         for row in rows
     ]
+def get_workspace_rows(workspace_id):
+ 
+    rows = get_rows()
+ 
+    workspace_conversations = get_workspace_conversations(
+        workspace_id
+    )
+ 
+    conversation_ids = {
+        item["conversation_id"]
+        for item in workspace_conversations
+    }
+ 
+    return [
+        row
+        for row in rows
+        if row[14] in conversation_ids
+    ]
+ 
  
  
  
