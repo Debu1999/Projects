@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html>
+<head>
+ 
+<title>Email Preview</title>
+ 
+<style>
+.sending-overlay{
+position:fixed;
+top:0;
+left:0;
+width:100%;
+height:100%;
+background:rgba(0,0,0,.45);
+display:flex;
+justify-content:center;
+align-items:center;
+z-index:99999;
+}
+ 
+.sending-box{
+background:white;
+padding:35px;
+border-radius:10px;
+min-width:350px;
+text-align:center;
+box-shadow:0 10px 30px rgba(0,0,0,.25);
+}
+ 
+.spinner{
+width:50px;
+height:50px;
+margin:0 auto 20px;
+border:5px solid #ddd;
+border-top:5px solid #0078d4;
+border-radius:50%;
+animation:spin 1s linear infinite;
+}
+ 
+@keyframes spin{
+0%{transform:rotate(0deg);}
+100%{transform:rotate(360deg);}
+}
+ 
+ 
+body {
+font-family: Arial, sans-serif;
+background: #f4f6f9;
+}
+ 
+.container {
+width: 800px;
+margin: 40px auto;
+background: white;
+padding: 25px;
+border-radius: 8px;
+box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+}
+ 
+.preview-box {
+border: 1px solid #ddd;
+padding: 15px;
+margin-top: 10px;
+border-radius: 4px;
+}
+ 
+.btn {
+padding: 10px 15px;
+border-radius: 4px;
+border: none;
+cursor: pointer;
+}
+ 
+.confirm {
+background: #28a745;
+color: white;
+}
+ 
+.cancel {
+background: #dc3545;
+color: white;
+margin-left: 10px;
+}
+ 
+</style>
+ 
+</head>
+ 
+<body>
+ 
+<div class="container">
+ 
+<h2>📬 Email Preview</h2>
+ 
+<p><strong>Total Recipients:</strong> {{ recipients|length }}</p>
+ 
+<h4>Subject</h4>
+ 
+<div class="preview-box">
+{{ preview_subject }}
+</div>
+ 
+<h4>Body</h4>
+ 
+<div class="preview-box">
+{{ preview_body | safe }}
+</div>
+ 
+<form method="POST" action="{{ url_for('confirm_send') }}" onsubmit="document.getElementById('confirmSendBtn').disabled=true;
+showLoading('Sending Bulk Emails...');">
+ 
+<input type="hidden" name="draft_id" value="{{ draft_id }}">
+<input type="hidden" name="folder_id" value="{{ folder_id }}">
+<input type="hidden" name="recipients" value='{{ recipients | tojson | safe }}'>
+ 
+<input type="hidden" name="bulk_category_name" value="{{ bulk_category_name }}">
+
+ 
+<button type="submit" id="confirmSendBtn" class="btn confirm">
+Confirm & Send
+</button>
+ 
+</form>
+ 
+</div>
+<div id="sendingOverlay" class="sending-overlay" style="display:none;">
+    <div class="sending-box">
+        <div class="spinner"></div>
+ 
+        <h2>Sending Bulk Emails...</h2>
+ 
+        <p>Please don't refresh or close this page.</p>
+ 
+        <p id="sendingStatus">Preparing...</p>
+    </div>
+</div>
+<script>
+function showLoading(message="Processing..."){
+    document.getElementById("sendingStatus").innerText = message;
+    document.getElementById("sendingOverlay").style.display = "flex";
+}
+</script>
+ 
+</body>
+</html>
+ 

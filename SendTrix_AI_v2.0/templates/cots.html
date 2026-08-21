@@ -1,0 +1,3567 @@
+{% extends "base.html" %}
+ 
+{% block content %}
+<style>
+.slot-date-header{
+ 
+display:flex;
+align-items:center;
+ 
+gap:8px;
+ 
+margin:18px 0 14px;
+ 
+padding-bottom:8px;
+ 
+font-size:18px;
+ 
+font-weight:600;
+ 
+color:#1e3a8a;
+ 
+border-bottom:2px solid #dbeafe;
+ 
+}
+ 
+.meeting-actions{
+display:flex;
+justify-content:flex-end;
+gap:12px;
+margin-top:25px;
+padding-top:20px;
+border-top:1px solid #e5e7eb;
+}
+.recommended-slot{
+ 
+border:2px solid #22c55e;
+ 
+background:#f0fdf4;
+ 
+}
+ 
+.recommended-slot:hover{
+ 
+border-color:#16a34a;
+ 
+}
+ 
+.meeting-btn{
+padding:12px 22px;
+border:none;
+border-radius:8px;
+cursor:pointer;
+font-size:14px;
+font-weight:600;
+transition:.2s;
+}
+ 
+.meeting-btn.primary{
+background:#2563eb;
+color:white;
+}
+ 
+.meeting-btn.primary:hover{
+background:#1d4ed8;
+}
+ 
+.meeting-btn.secondary{
+background:#f3f4f6;
+color:#374151;
+}
+ 
+.meeting-btn.secondary:hover{
+background:#e5e7eb;
+}
+ 
+.modal{
+ 
+display:none;
+position:fixed;
+ 
+top:0;
+left:0;
+ 
+width:100%;
+height:100%;
+ 
+background:rgba(0,0,0,.45);
+ 
+justify-content:center;
+align-items:center;
+ 
+z-index:9999;
+ 
+}
+ 
+.modal.show{
+ 
+display:flex;
+ 
+}
+ 
+.modal-content{
+display: flex;
+flex-direction: column;
+ 
+background:white;
+ 
+width:850px;
+max-width:95%;
+ 
+max-height:90vh;
+ 
+overflow-y:auto;
+ 
+padding:28px;
+ 
+border-radius:14px;
+ 
+box-shadow:0 20px 50px rgba(0,0,0,.25);
+ 
+}
+ 
+.switch {
+  position: relative;
+  display: inline-block;
+  width: 40px;
+  height: 20px;
+}
+ 
+.switch input {
+  display: none;
+}
+ 
+.slider {
+  position: absolute;
+  cursor: pointer;
+  background-color: #ccc;
+  border-radius: 20px;
+  top: 0; left: 0; right: 0; bottom: 0;
+}
+ 
+.slider:before {
+  position: absolute;
+  content: "";
+  height: 16px; width: 16px;
+  left: 2px; bottom: 2px;
+  background-color: white;
+  border-radius: 50%;
+  transition: 0.3s;
+}
+ 
+input:checked + .slider {
+  background-color: #4CAF50;
+}
+ 
+input:checked + .slider:before {
+  transform: translateX(20px);
+}
+ 
+td, th {
+  text-align: center;
+  vertical-align: middle;
+}
+ 
+input, select {
+  width: 120px;
+}
+ 
+.edit-panel {
+  margin-top: 5px;
+}
+ 
+button {
+  margin: 2px;
+  padding: 4px 8px;
+}
+.working-hours-card{
+display:flex;
+justify-content:space-between;
+align-items:center;
+ 
+margin:15px 0;
+padding:12px 16px;
+ 
+background:#f8fafc;
+border:1px solid #dbeafe;
+border-radius:10px;
+}
+ 
+.working-hours-title{
+font-weight:600;
+color:#1e3a8a;
+}
+ 
+.working-hours-time{
+color:#374151;
+font-size:14px;
+}
+ 
+.stats-container{
+display:flex;
+flex-wrap:wrap;
+gap:15px;
+margin-bottom:20px;
+}
+#meetingSlots{
+ 
+max-height:340px;
+ 
+overflow-y:auto;
+ 
+margin-top:15px;
+ 
+padding-right:8px;
+ 
+}
+ 
+.stat-card{
+min-width:180px;
+padding:15px;
+border-radius:10px;
+color:white;
+font-weight:bold;
+box-shadow:0 2px 8px rgba(0,0,0,0.15);
+}
+ 
+.stat-title{
+font-size:14px;
+opacity:0.9;
+}
+ 
+.stat-value{
+font-size:28px;
+margin-top:5px;
+}
+ 
+.total-card{
+background:#1F4E78;
+}
+ 
+.compliant-card{
+background:#28a745;
+}
+ 
+.noncompliant-card{
+background:#dc3545;
+}
+ 
+.pending-card{
+background:#fd7e14;
+}
+ 
+.exception-card{
+background:#6f42c1;
+}
+ 
+.mail-card{
+background:#17a2b8;
+}
+.primary-btn{
+background:#1F4E78;
+color:white;
+border:none;
+padding:10px 18px;
+border-radius:8px;
+cursor:pointer;
+font-weight:600;
+transition:0.2s;
+}
+ 
+.primary-btn:hover{
+background:#163b5c;
+transform:translateY(-1px);
+}
+ 
+.secondary-btn{
+background:white;
+color:#1F4E78;
+border:1px solid #1F4E78;
+padding:10px 18px;
+border-radius:8px;
+cursor:pointer;
+font-weight:600;
+transition:0.2s;
+}
+ 
+.secondary-btn:hover{
+background:#f5f8fc;
+}
+select,
+input[type="date"],
+input[type="number"]{
+ 
+padding:8px;
+border:1px solid #d9d9d9;
+border-radius:6px;
+background:white;
+font-size:13px;
+}
+ 
+select:focus,
+input:focus{
+ 
+outline:none;
+border-color:#1F4E78;
+box-shadow:0 0 4px rgba(31,78,120,0.25);
+}
+.master-table{
+ 
+width:100%;
+border-collapse:collapse;
+font-size:14px;
+background:white;
+}
+ 
+.master-table th{
+ 
+background:#1F4E78;
+color:white;
+padding:12px;
+position:sticky;
+top:0;
+z-index:5;
+}
+ 
+.master-table td{
+ 
+padding:10px;
+border-bottom:1px solid #ececec;
+vertical-align:middle;
+}
+ 
+.master-table tr:nth-child(even){
+ 
+background:#fafafa;
+}
+ 
+.master-table tr:hover{
+ 
+background:#eef6ff;
+transition:0.15s;
+}
+.tracking-btn{
+background:#eef2ff;
+border:1px solid #c7d2fe;
+border-radius:8px;
+padding:6px 10px;
+cursor:pointer;
+}
+ 
+.tracking-btn:hover{
+background:#e0e7ff;
+}
+.stat-card{
+cursor:pointer;
+transition:0.2s;
+}
+ 
+.stat-card:hover{
+transform:translateY(-2px);
+box-shadow:0 4px 12px rgba(0,0,0,0.15);
+}
+.frequency-input:disabled,
+.freq-unit:disabled{
+background:#f3f4f6;
+color:#6b7280;
+cursor:not-allowed;
+opacity:0.8;
+}
+.toolbar{
+margin:15px 0;
+}
+ 
+#trackoraSearch{
+width:350px;
+padding:10px 14px;
+border:1px solid #d1d5db;
+border-radius:8px;
+font-size:14px;
+}
+.person-card{
+ 
+display:flex;
+align-items:center;
+gap:15px;
+ 
+padding:15px;
+ 
+background:#f8fafc;
+ 
+border:1px solid #e5e7eb;
+ 
+border-radius:12px;
+ 
+margin:18px 0;
+ 
+}
+ 
+.person-avatar{
+ 
+width:55px;
+height:55px;
+ 
+border-radius:50%;
+ 
+background:#2563eb;
+ 
+color:white;
+ 
+display:flex;
+justify-content:center;
+align-items:center;
+ 
+font-size:22px;
+font-weight:bold;
+ 
+}
+.slot-status{
+ 
+margin-top:8px;
+ 
+display:inline-block;
+ 
+padding:4px 8px;
+ 
+border-radius:20px;
+ 
+font-size:11px;
+ 
+font-weight:600;
+ 
+}
+ 
+.slot-status.available{
+ 
+background:#dcfce7;
+ 
+color:#166534;
+ 
+}
+ 
+.slot-status.tentative{
+ 
+background:#fef3c7;
+ 
+color:#92400e;
+ 
+}
+ 
+.slot-status.busy{
+ 
+background:#fee2e2;
+ 
+color:#991b1b;
+ 
+}
+ 
+.recommended-badge{
+ 
+margin-top:10px;
+ 
+display:inline-block;
+ 
+padding:4px 8px;
+ 
+font-size:12px;
+ 
+font-weight:600;
+ 
+background:#dcfce7;
+ 
+color:#166534;
+ 
+border-radius:20px;
+ 
+border:1px solid #86efac;
+ 
+}
+ 
+ 
+.person-name{
+ 
+font-size:17px;
+ 
+font-weight:600;
+ 
+color:#111827;
+ 
+margin-bottom:4px;
+ 
+}
+ 
+.person-email{
+ 
+color:#6b7280;
+ 
+font-size:14px;
+ 
+}
+.slot-grid{
+ 
+display:grid;
+ 
+grid-template-columns:repeat(auto-fill,minmax(180px,1fr));
+ 
+gap:12px;
+ 
+margin-top:20px;
+ 
+}
+ 
+.slot-card{
+ 
+padding:14px;
+ 
+border:2px solid #dbe4ef;
+ 
+border-radius:10px;
+ 
+cursor:pointer;
+ 
+background:white;
+ 
+transition:.2s;
+ 
+}
+ 
+.slot-card:hover{
+ 
+border-color:#2563eb;
+ 
+transform:translateY(-2px);
+ 
+box-shadow:0 6px 14px rgba(0,0,0,.08);
+ 
+}
+ 
+.slot-card.selected{
+ 
+background:#2563eb;
+ 
+color:white;
+ 
+border-color:#2563eb;
+ 
+}
+ 
+.slot-time{
+ 
+font-weight:600;
+ 
+font-size:15px;
+ 
+}
+ 
+.slot-date{
+ 
+margin-top:6px;
+ 
+font-size:13px;
+ 
+opacity:.8;
+ 
+}
+ 
+.slot-card input{
+ 
+display:none;
+ 
+}
+.slot-group{
+    margin-bottom:24px;
+    width:100%;
+}
+ 
+.slot-grid{
+    display:grid;
+    grid-template-columns:repeat(4,1fr);
+    gap:12px;
+    margin-top:10px;
+}
+/* ==========================================
+   MAIL CONFIG MODAL
+========================================== */
+ 
+.mail-config-modal{
+ 
+display:none;
+ 
+position:fixed;
+ 
+top:0;
+left:0;
+ 
+width:100%;
+height:100%;
+ 
+background:rgba(0,0,0,0.45);
+ 
+justify-content:center;
+align-items:center;
+ 
+z-index:9999;
+ 
+backdrop-filter:blur(3px);
+ 
+}
+ 
+.mail-config-container{
+ 
+width:520px;
+ 
+background:#ffffff;
+ 
+border-radius:16px;
+ 
+overflow:hidden;
+ 
+box-shadow:0 20px 60px rgba(0,0,0,.25);
+ 
+animation:mailPopup .25s ease;
+ 
+}
+ 
+@keyframes mailPopup{
+ 
+from{
+ 
+opacity:0;
+transform:translateY(-20px) scale(.95);
+ 
+}
+ 
+to{
+ 
+opacity:1;
+transform:translateY(0) scale(1);
+ 
+}
+ 
+}
+ 
+/* ========================= */
+ 
+.mail-config-header{
+ 
+display:flex;
+ 
+justify-content:space-between;
+ 
+align-items:center;
+ 
+padding:20px 25px;
+ 
+background:#2563eb;
+ 
+color:white;
+ 
+}
+ 
+.mail-config-header h2{
+ 
+margin:0;
+ 
+font-size:22px;
+ 
+font-weight:600;
+ 
+}
+ 
+.mail-close-btn{
+ 
+font-size:28px;
+ 
+cursor:pointer;
+ 
+transition:.2s;
+ 
+}
+ 
+.mail-close-btn:hover{
+ 
+transform:scale(1.15);
+ 
+color:#ffd5d5;
+ 
+}
+ 
+/* ========================= */
+ 
+.mail-config-subtitle{
+ 
+padding:18px 25px 5px;
+ 
+margin:0;
+ 
+font-size:14px;
+ 
+color:#666;
+ 
+}
+ 
+/* ========================= */
+ 
+.mail-config-group{
+ 
+padding:15px 25px;
+ 
+}
+ 
+.mail-config-group label{
+ 
+display:block;
+ 
+margin-bottom:8px;
+ 
+font-size:14px;
+ 
+font-weight:600;
+ 
+color:#333;
+ 
+}
+ 
+/* ========================= */
+ 
+.mail-config-row{
+ 
+display:flex;
+ 
+gap:10px;
+ 
+align-items:center;
+ 
+}
+ 
+.mail-config-row select{
+ 
+flex:1;
+ 
+height:42px;
+ 
+padding:0 12px;
+ 
+font-size:14px;
+ 
+border:1px solid #d9d9d9;
+ 
+border-radius:8px;
+ 
+outline:none;
+ 
+transition:.2s;
+ 
+background:white;
+ 
+}
+ 
+.mail-config-row select:focus{
+ 
+border-color:#2563eb;
+ 
+box-shadow:0 0 0 3px rgba(37,99,235,.15);
+ 
+}
+ 
+/* ========================= */
+ 
+.mail-preview-btn{
+ 
+width:42px;
+ 
+height:42px;
+ 
+border:none;
+ 
+border-radius:8px;
+ 
+background:#edf2ff;
+ 
+cursor:pointer;
+ 
+font-size:18px;
+ 
+transition:.2s;
+ 
+}
+ 
+.mail-preview-btn:hover{
+ 
+background:#2563eb;
+ 
+color:white;
+ 
+transform:scale(1.05);
+ 
+}
+ 
+/* ========================= */
+ 
+.mail-config-footer{
+ 
+display:flex;
+ 
+justify-content:flex-end;
+ 
+gap:12px;
+ 
+padding:20px 25px;
+ 
+border-top:1px solid #eee;
+ 
+background:#fafafa;
+ 
+}
+ 
+/* ========================= */
+ 
+.mail-cancel-btn{
+ 
+padding:10px 22px;
+ 
+border:none;
+ 
+border-radius:8px;
+ 
+background:#e5e7eb;
+ 
+cursor:pointer;
+ 
+font-weight:600;
+ 
+transition:.2s;
+ 
+}
+ 
+.mail-cancel-btn:hover{
+ 
+background:#d1d5db;
+ 
+}
+ 
+/* ========================= */
+ 
+.mail-save-btn{
+ 
+padding:10px 24px;
+ 
+border:none;
+ 
+border-radius:8px;
+ 
+background:#2563eb;
+ 
+color:white;
+ 
+font-weight:600;
+ 
+cursor:pointer;
+ 
+transition:.2s;
+ 
+}
+ 
+.mail-save-btn:hover{
+ 
+background:#1d4ed8;
+ 
+transform:translateY(-1px);
+ 
+box-shadow:0 5px 15px rgba(37,99,235,.35);
+ 
+}
+ 
+ 
+ 
+</style>
+<div id="helpModal" class="modal">
+  <div class="modal-content" style="max-width:500px;">
+    <h3 id="helpTitle">Help</h3>
+    <div id="helpBody" style="line-height:1.6;"></div>
+    <br>
+    <button class="meeting-btn secondary" onclick="closeHelpModal()">Got it</button>
+  </div>
+</div>
+ 
+<div class="page-title">Applications Dashboard</div>
+ 
+<!-- Tabs -->
+<div style="margin-bottom:20px;">
+    <button class="secondary-btn" onclick="showTab('uploads')">Uploads</button>
+    <button class="secondary-btn" onclick="showTab('master')">Master</button>
+    <button class="secondary-btn" onclick="showTab('comparison')">Comparison</button>
+    <button class="secondary-btn" onclick="showTab('actions')">Action Templates</button>
+</div>
+ 
+<!-- UPLOAD TAB -->
+<div id="uploadsTab" class="tab-content">
+    <div class="table-container" style="margin-bottom:20px;">
+        <input type="file" id="fileInput">
+        <button class="primary-btn" onclick="uploadFile()">Upload</button>
+        <button class="secondary-btn" onclick="openHelp('uploads')"><i class="fa-slab-press fa-regular fa-circle-question"></i></button>
+    </div>
+ 
+    <div class="table-container">
+        <table>
+            <thead>
+                <tr>
+                    <th>ID</th>
+                    <th>File Name</th>
+                    <th>Created At</th>
+                    <th>Master</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+    {% for upload in uploads %}
+    <tr>
+        <td>{{ upload.id }}</td>
+        <td>{{ upload.file_name }}</td>
+        <td class="upload-date" data-date="{{ upload.created_at }}"></td>
+ 
+        <td>
+{% if upload.id == master_id %}
+     <span style="color:green; font-weight:bold;">✅ Master</span>
+{% else %}
+     -
+{% endif %}
+</td>
+ 
+        <td>
+{% if not master_exists %}
+     <!-- No master yet -->
+     <button onclick="setMaster('{{ upload.id }}')" class="primary-btn">
+         Make Master
+     </button>
+ 
+{% else %}
+     {% if upload.id == master_id %}
+    <span style="color:green;">Current Master</span><br>
+ 
+    <button onclick="demoteMaster()" class="danger-btn">
+        Demote
+    </button>
+{% else %}
+    <button onclick="runComparison('{{ upload.id }}')" class="secondary-btn">
+        Compare
+    </button>
+{% endif %}
+{% endif %}
+<br><br>
+ 
+<button
+onclick="renameUpload('{{ upload.id }}','{{ upload.file_name }}')"
+class="secondary-btn">
+ 
+✏ Rename
+ 
+</button>
+ 
+<button
+onclick="deleteUpload('{{ upload.id }}')"
+class="danger-btn">
+ 
+🗑 Delete
+ 
+</button>
+</td>
+    </tr>
+    {% endfor %}
+</tbody>
+        </table>
+    </div>
+</div>
+
+<!-- MASTER TAB -->
+<div id="masterTab" class="tab-content" style="display:none;">
+<div class="toolbar">
+<input
+type="text"
+id="trackoraSearch"
+placeholder="Search ASN / Name / Owner / Vendor..."
+onkeyup="filterTrackora()">
+<button id="downloadMasterBtn" class="secondary-btn" onclick="downloadMasterExcel()">
+    <i class="fa-solid fa-download"></i> Download Master
+</button>
+<button class="secondary-btn" onclick="openHelp('master')">?</button>
+</div>
+<div id="nlQueryModal" style="display:none; position:fixed; top:10%; left:20%; width:60%; background:white; padding:20px; border-radius:10px; max-height:80vh; overflow-y:auto; box-shadow:0 0 15px rgba(0,0,0,0.3); z-index:1000;">
+    <h3>Query Results</h3>
+    <p id="nlExplanation"></p>
+    <p><code id="nlSqlDisplay"></code></p>
+    <div id="nlResultsTable"></div>
+    <br>
+    <button onclick="downloadNlResults()">⬇ Download as Excel</button>
+    <button onclick="closeNlQueryModal()">Close</button>
+</div>
+<input type="text" id="nlQuestion" placeholder="e.g. show applications with no review in the last 90 days" style="width:60%;">
+<button onclick="runNlQuery()">Ask</button>
+<div id="nlResults"></div>
+
+<script>
+let lastSql = null;
+
+function runNlQuery() {
+    const question = document.getElementById("nlQuestion").value;
+    const formData = new FormData();
+    formData.append("question", question);
+
+    fetch("/nl_query", { method: "POST", body: formData })
+    .then(res => res.json())
+    .then(data => {
+        if (!data.success) {
+            document.getElementById("nlExplanation").innerHTML = `<span style="color:red;">${data.error}</span>`;
+            document.getElementById("nlSqlDisplay").innerText = "";
+            document.getElementById("nlResultsTable").innerHTML = "";
+            lastSql = null;
+        } else {
+            document.getElementById("nlExplanation").innerText = data.explanation;
+            document.getElementById("nlSqlDisplay").innerText = data.sql;
+            lastSql = data.sql;
+
+            let html = `<table border="1"><tr>${data.columns.map(c => `<th>${c}</th>`).join("")}</tr>`;
+            data.rows.forEach(row => {
+                html += `<tr>${row.map(v => `<td>${v}</td>`).join("")}</tr>`;
+            });
+            html += `</table>`;
+            document.getElementById("nlResultsTable").innerHTML = html;
+        }
+
+        document.getElementById("nlQueryModal").style.display = "block";
+    });
+}
+
+function closeNlQueryModal() {
+    document.getElementById("nlQueryModal").style.display = "none";
+}
+
+function downloadNlResults() {
+    if (!lastSql) {
+        alert("No results to download yet");
+        return;
+    }
+
+    const formData = new FormData();
+    formData.append("sql", lastSql);
+
+    fetch("/nl_query/download", { method: "POST", body: formData })
+    .then(res => res.blob())
+    .then(blob => {
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = "trackora_query_results.xlsx";
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+    })
+    .catch(() => alert("Error downloading results"));
+}
+</script>
+    <div class="table-container">
+        <h3>Current Master</h3>
+        <div class="stats-container">
+            <div class="stat-card total-card" onclick="filterMasterTable('ALL')">
+                <div class="stat-title"><i class="fa-solid fa-layer-group"></i> Total Applications</div>
+                <div class="stat-value" id="totalApps">0</div>
+            </div>
+            <div class="stat-card compliant-card" onclick="filterMasterTable('Compliant')">
+                <div class="stat-title"><i class="fa-solid fa-circle-check"></i> Compliant</div>
+                <div class="stat-value" id="compliantApps">0</div>
+            </div>
+            <div class="stat-card noncompliant-card" onclick="filterMasterTable('Non-compliant')">
+                <div class="stat-title"><i class="fa-solid fa-triangle-exclamation"></i> Non-Compliant</div>
+                <div class="stat-value" id="nonCompliantApps">0</div>
+            </div>
+            <div class="stat-card pending-card" onclick="filterMasterTable('Pending Validation')">
+                <div class="stat-title"><i class="fa-solid fa-hourglass-half"></i> Pending Validation</div>
+                <div class="stat-value" id="pendingApps">0</div>
+            </div>
+            <div class="stat-card exception-card" onclick="filterMasterTable('Exception Approved')">
+                <div class="stat-title"><i class="fa-solid fa-shield"></i> Exception Approved</div>
+                <div class="stat-value" id="exceptionApps">0</div>
+            </div>
+            <div class="stat-card mail-card" onclick="filterMasterTable('MAIL_SENT')">
+                <div class="stat-title"><i class="fa-solid fa-paper-plane"></i> Initial Mail Sent</div>
+                <div class="stat-value" id="mailSentApps">0</div>
+            </div>
+        </div>
+ 
+        <button id="sendComplianceBtn" class="primary-btn" onclick="sendMasterMails()">
+            📧 Send Compliance Emails
+        </button>
+        <span id="masterSelectionCount" style="margin-left:15px;">
+    0 applications selected
+</span>
+ 
+<button
+    type="button"
+    id="bulkComplianceMailBtn"
+    class="primary-btn"
+    onclick="openBulkComplianceModal()"
+    style="display:none;">
+    📧 Send Selected
+</button>
+ 
+        <button class="secondary-btn" onclick="sendActionEmails()">
+            Send Action Emails
+        </button>
+        <div style="margin-bottom:15px; display:flex; gap:10px;">
+ 
+<select id="defaultDraft">
+<option value="">Select Default Draft</option>
+</select>
+ 
+<select id="defaultCategory">
+<option value="">Select Default Category</option>
+</select>
+ 
+</div>
+
+
+        <table>
+            <thead>
+                <tr>
+                    <th class="selection-column">
+                        <input type="checkbox" id="selectAllMaster" onchange="toggleAllMasterRows(this)">
+                    </th>
+                    <th>ASN</th>
+                    <th>Name</th>
+                    <th>Status</th>
+                    <th>Owner</th>
+                    <th>Tech Owner</th>
+                    <th>Version</th>
+                    <th>Vendor</th>
+                    <th>Mode</th>
+                    <th>Frequency</th>
+                    <th>Start Date</th>
+                    <th>Due Date</th>
+                    <th>Evidence</th>
+                    <th>Countdown</th>
+                    <th>Exception Reason</th>
+                    <th>Comments</th>
+                    <th>Internal Status</th>
+                    <th>Vendor Status</th>
+                    <th>Recommended Action</th>
+                    <th>Action Status</th>
+                    <th>Meeting</th>
+                    <th>Edit Configuration</th>
+                    <th>Mail Status</th>
+                    <th>Track Mail</th>
+                    <th>Send Mail</th>
+                    <th>Save</th>
+                </tr>
+            </thead>
+            <tbody id="masterTable"></tbody>
+        </table>
+<div id="editModal" class="mail-config-modal">
+ 
+    <div class="mail-config-container">
+ 
+        <div class="mail-config-header">
+ 
+            <h2>✉ Edit Mail Settings</h2>
+ 
+            <span class="mail-close-btn"
+                  onclick="closeModal()">
+                ×
+            </span>
+ 
+        </div>
+ 
+        <p class="mail-config-subtitle">
+            Update the draft and category used for emails.
+        </p>
+ 
+        <div class="mail-config-group">
+ 
+            <label>Draft</label>
+ 
+            <div class="mail-config-row">
+ 
+                <select id="modalDraft"></select>
+ 
+                <button class="mail-preview-btn"
+                        onclick="previewDraftModal()">
+                        <i class="fa-solid fa-eye"></i>
+                </button>
+ 
+            </div>
+ 
+        </div>
+ 
+        <div class="mail-config-group">
+ 
+            <label>Category</label>
+ 
+            <div class="mail-config-row">
+ 
+                <select id="modalCategory"></select>
+ 
+                <button class="mail-preview-btn"
+                        onclick="previewCategoryModal()">
+                        <i class="fa-solid fa-eye"></i>
+                </button>
+ 
+            </div>
+ 
+        </div>
+ 
+        <div class="mail-config-footer">
+ 
+            <button class="mail-cancel-btn"
+                    onclick="closeModal()">
+                Cancel
+            </button>
+ 
+            <button class="mail-save-btn"
+                    onclick="saveModal()">
+                💾 Save Changes
+            </button>
+ 
+        </div>
+ 
+    </div>
+ 
+</div>
+<!-- BULK COMPLIANCE MAIL MODAL -->
+<div id="bulkComplianceModal" class="mail-config-modal" style="display:none;">
+ 
+    <div class="mail-config-container">
+ 
+        <div class="mail-config-header">
+ 
+            <h2>✉ Bulk Compliance Mail</h2>
+ 
+            <span
+                class="mail-close-btn"
+                onclick="closeBulkComplianceModal()">
+                ×
+            </span>
+ 
+        </div>
+ 
+        <p class="mail-config-subtitle">
+            Configure the compliance email for the selected applications.
+        </p>
+ 
+        <div
+            style="
+                background:#f8fafc;
+                padding:12px;
+                border-radius:8px;
+                margin-bottom:20px;
+            ">
+ 
+            <strong id="bulkSelectedCount">
+                0 applications selected
+            </strong>
+ 
+        </div>
+ 
+        <!-- DRAFT -->
+ 
+        <div class="mail-config-group">
+ 
+            <label>Draft</label>
+ 
+            <div class="mail-config-row">
+ 
+                <select id="bulkModalDraft">
+                    <option value="">
+                        Select Draft
+                    </option>
+                </select>
+ 
+                <button
+                    class="mail-preview-btn"
+                    onclick="previewBulkDraftModal()">
+                </button>
+ 
+            </div>
+ 
+        </div>
+ 
+        <!-- CATEGORY -->
+ 
+        <div class="mail-config-group">
+ 
+            <label>Category</label>
+ 
+            <div class="mail-config-row">
+ 
+                <select id="bulkModalCategory">
+                    <option value="">
+                        Select Category
+                    </option>
+                </select>
+ 
+                <button
+                    class="mail-preview-btn"
+                    onclick="previewBulkCategoryModal()">
+                </button>
+ 
+            </div>
+ 
+        </div>
+ 
+        <div class="mail-config-footer">
+ 
+            <button
+                class="mail-cancel-btn"
+                onclick="closeBulkComplianceModal()">
+                Cancel
+            </button>
+ 
+            <button
+                class="mail-save-btn"
+                onclick="sendSelectedComplianceMails()">
+                📧 Send Emails
+            </button>
+ 
+        </div>
+ 
+    </div>
+ 
+</div>
+ 
+<div id="evidenceModal" class="modal">
+ 
+    <div class="modal-content" style="width:80%;max-width:900px;">
+ 
+        <h3>Evidence Details</h3>
+ 
+        <div id="evidenceContent">
+ 
+            Loading...
+ 
+        </div>
+ 
+        <br>
+ 
+        <button onclick="closeEvidenceModal()">
+ 
+            Close
+ 
+        </button>
+ 
+    </div>
+ 
+</div>
+ 
+ 
+<div id="meetingModal"
+class="modal">
+ 
+<div class="modal-content">
+ 
+<h3>Schedule Compliance Review</h3>
+ 
+<p id="meetingAsn"></p>
+ 
+<label>Duration</label>
+ 
+<select id="meetingDuration" onchange="loadMeetingSuggestions(window.CURRENT_MEETING_ASN)">
+<option value="30">30 Minutes</option>
+<option value="60">60 Minutes</option>
+</select>
+<div id="workingHoursCard" class="working-hours-card"></div>
+ 
+<br><br>
+<div id="meetingPriorityPerson"
+style="
+margin-bottom:10px;
+padding:10px;
+background:#f8fafc;
+border-radius:8px;
+">
+</div>
+<div id="meetingSlots">
+Loading...
+</div>
+ 
+<br>
+ 
+<div class="meeting-actions">
+ 
+<button
+class="meeting-btn primary"
+onclick="createMeeting()">
+ 
+📅 Create Teams Meeting
+ 
+</button>
+ 
+<button
+class="meeting-btn secondary"
+onclick="closeMeetingModal()">
+ 
+Cancel
+ 
+</button>
+ 
+</div>
+ 
+ 
+</div>
+ 
+</div>
+ 
+    </div>
+</div>
+ 
+<!-- COMPARISON TAB -->
+<div id="comparisonTab" class="tab-content" style="display:none;">
+ 
+ <div class="table-container">
+ 
+ <h3>Comparison Files</h3>
+ <div style="margin-bottom:15px;">
+ 
+<button
+class="primary-btn"
+onclick="generateConsolidated()">
+ 
+Generate Consolidated Sheet
+ 
+</button>
+<button class="secondary-btn" onclick="openHelp('comparison')">?</button>
+ 
+</div>
+ 
+ <table>
+ <thead>
+ <tr>
+ <th>ID</th>
+ <th>Compared At</th>
+ <th>Status</th>
+ <th>Action</th>
+ </tr>
+ </thead>
+ 
+ <tbody id="comparisonFilesTable"></tbody>
+ 
+ </table>
+ 
+ </div>
+ 
+ <!-- REVIEW PANEL -->
+ 
+ <div id="reviewPanel" style="display:none; margin-top:30px;">
+ 
+ <h3>Review Comparison</h3>
+ <button class="primary-btn"onclick="applyAllChanges()">
+    Apply Everything
+ </button>
+
+ <button class="primary-btn"
+ onclick="ignoreAllChanges()">
+ Ignore Everything
+ </button>
+ <button class="primary-btn"onclick="downloadFinalExcel()">
+    Download Final Excel
+ </button>
+ 
+ <table>
+ <thead>
+ <tr>
+ <th>ASN</th>
+ <th>Changes</th>
+ <th>Type</th>
+ <th>Status</th>
+ <th>Action</th>
+ </tr>
+ </thead>
+ 
+ <tbody id="comparisonTable"></tbody>
+ 
+ </table>
+ 
+ </div>
+ <div id="changesModal"
+     style="
+     display:none;
+     position:fixed;
+     top:0;
+     left:0;
+     width:100%;
+     height:100%;
+     background:rgba(0,0,0,0.5);
+     z-index:9999;">
+ 
+    <div style="
+        background:white;
+        width:80%;
+        max-width:900px;
+        margin:50px auto;
+        padding:20px;
+        border-radius:8px;
+        max-height: 80vh;
+        overflow-y: auto;">
+ 
+        <h3 id="changesModalTitle">
+            Application Changes
+        </h3>
+ 
+        <table
+            style="width:100%; border-collapse:collapse; border:1">
+ 
+            <thead>
+                <tr>
+                    <th>Field</th>
+                    <th>Old Value</th>
+                    <th>New Value</th>
+                    <th>Type</th>
+                </tr>
+            </thead>
+ 
+            <tbody id="changesModalTable">
+            </tbody>
+ 
+        </table>
+ 
+        <br>
+ 
+        <button onclick="closeChangesModal()">
+            Close
+        </button>
+ 
+    </div>
+ 
+</div>
+</div>
+<div id="actionsTab"
+     class="tab-content"
+     style="display:none;">
+ 
+    <div class="table-container">
+ 
+        <h3>Recommended Action Mapping</h3>
+ 
+        <table>
+ 
+            <thead>
+                <tr>
+                    <th>Recommended Action</th>
+                    <th>Draft</th>
+                    <th>Category</th>
+                    <th>Save</th>
+                </tr>
+            </thead>
+ 
+            <tbody id="actionMappingTable">
+            </tbody>
+ 
+        </table>
+ 
+    </div>
+ 
+</div>
+<input
+type="file"
+id="evidenceFile"
+style="display:none;"
+accept=".png,.jpg,.jpeg,.pdf,.doc,.docx"
+onchange="uploadSelectedEvidence()">
+ 
+<script>
+window.ALL_DRAFTS = [];
+window.ALL_CATEGORIES = [];
+window.ROW_CONFIG = {};  // per ASN override
+
+function showTab(tab) {
+document.getElementById("uploadsTab").style.display = "none";
+document.getElementById("masterTab").style.display = "none";
+document.getElementById("comparisonTab").style.display = "none";
+const actionsTab=document.getElementById("actionsTab");
+if(actionsTab){
+  actionsTab.style.display="none";
+}
+
+document.getElementById(tab + "Tab").style.display = "block";
+localStorage.setItem("trackora_active_tab", tab);
+ 
+if (tab === "master") loadMaster();
+if (tab === "comparison") loadComparisons();
+if(tab=="actions") loadActionMappings();
+}
+function updateComplianceUI(row) {
+ 
+const mode =
+row.querySelector(".compliance-mode").value;
+ 
+const frequencyInput =
+row.querySelector(".frequency-input");
+ 
+const freqUnit =
+row.querySelector(".freq-unit");
+ 
+const reviewStart =
+row.querySelector(".review-start-date");
+ 
+const dueDate =
+row.querySelector(".remediation-date");
+ 
+const reason =
+row.querySelector(".exception-reason");
+ 
+if (mode === "FREQUENCY") {
+ 
+frequencyInput.style.display = "";
+freqUnit.style.display = "";
+frequencyInput.disabled=false;
+freqUnit.disabled=false;
+reviewStart.style.display = "";
+ 
+dueDate.style.display = "none";
+reason.style.display = "none";
+ 
+} else {
+ 
+frequencyInput.style.display = "";
+freqUnit.style.display = "";
+frequencyInput.disabled=true;
+freqUnit.disabled=true;
+reviewStart.style.display = "";
+ 
+dueDate.style.display = "";
+reason.style.display = "";
+}
+}
+function downloadMasterExcel() {
+    window.location.href = "/applications/master-data/download";
+}
+ 
+async function loadMaster() {
+  console.time("master-fetch");
+ 
+ const res = await fetch("/applications/master-data");
+ const data = await res.json();
+ console.timeEnd("master-fetch");
+ document.getElementById("totalApps").innerText = data.length;
+ const compliantCount =data.filter(x => x.internal_status === "Compliant").length;
+ document.getElementById("compliantApps").innerText = compliantCount;
+ const nonCompliantCount =data.filter(x => x.internal_status === "Non-compliant").length;
+ document.getElementById("nonCompliantApps").innerText = nonCompliantCount;
+ const pendingCount =data.filter(x => x.internal_status === "Pending Validation").length;
+ document.getElementById("pendingApps").innerText = pendingCount;
+ const exceptionCount =data.filter(x => x.internal_status === "Exception Approved").length;
+ document.getElementById("exceptionApps").innerText = exceptionCount;
+ const mailSentCount =data.filter(x =>x.send_status &&x.send_status !== "NOT SENT").length;
+ document.getElementById("mailSentApps").innerText = mailSentCount;
+ const table = document.getElementById("masterTable");
+ 
+ table.innerHTML = "";
+ 
+ if (data.length > 0) {
+ window.CURRENT_UPLOAD_ID = data[0].upload_id;
+ }
+
+ console.time("render");
+ 
+ data.forEach(row => {
+
+    console.log("ROW DATA:",row);
+ 
+ window.ROW_CONFIG[row.asn] = {
+ draft_id: row.draft_id || "",
+ category: row.category || "",
+ }
+ 
+ table.innerHTML += `
+ 
+<tr id="row-${row.asn}">
+<td class="selection-column">
+    <input
+        type="checkbox"
+        class="master-row-checkbox"
+        data-asn="${row.asn}"
+        onchange="updateMasterSelection()">
+</td>
+ 
+<td>${row.asn}</td>
+<td>${row.name}</td>
+<td>${row.status}</td>
+<td>${row.owner}</td>
+<td>${row.tech_owner}</td>
+<td>${row.version}</td>
+<td>${row.vendor}</td>
+ 
+<!-- COMPLIANCE MODE -->
+ 
+<td>
+ 
+<select
+class="compliance-mode"
+onchange="updateComplianceUI(this.closest('tr'))"
+>
+ 
+<option value="FREQUENCY"
+${row.compliance_mode === "FREQUENCY" ? "selected" : ""}>
+Frequency
+</option>
+ 
+<option value="DATE_BASED"
+${row.compliance_mode === "DATE_BASED" ? "selected" : ""}>
+Date Based
+</option>
+ 
+</select>
+ 
+</td>
+ 
+ 
+<!-- FREQUENCY -->
+ 
+<td>
+ 
+<input
+type="number"
+class="frequency-input"
+value="${row.frequency || 30}"
+style="width:70px;">
+ 
+<select class="freq-unit">
+ 
+<option value="days"
+${row.frequency_unit === "days" ? "selected" : ""}>
+Days
+</option>
+ 
+<option value="minutes"
+${row.frequency_unit === "minutes" ? "selected" : ""}>
+Minutes
+</option>
+ 
+</select>
+ 
+</td>
+<td>
+ 
+<input
+type="date"
+class="review-start-date"
+value="${row.review_start_date || ''}">
+ 
+</td>
+ 
+<!-- DUE DATE -->
+ 
+<td>
+ 
+<input
+type="date"
+class="remediation-date"
+value="${row.remediation_due_date || ''}">
+ 
+</td>
+<!-- EVIDENCE -->
+ 
+<td>
+ 
+<button
+class="secondary-btn"
+onclick="uploadEvidence('${row.asn}')">
+ 
+📤 Upload
+ 
+</button>
+
+<button
+class="secondary-btn"
+onclick="viewEvidence('${row.asn}')">
+ 
+👁 View
+ 
+</button>
+ 
+</td>
+<!-- COUNTDOWN -->
+<td
+class="countdown"
+data-due="${row.next_due_date || ''}"
+title="${row.next_due_date || ''}">
+
+-
+</td>
+ 
+<!-- EXCEPTION REASON -->
+ 
+<td>
+ 
+<input
+type="text"
+class="exception-reason"
+placeholder="Reason"
+value="${row.exception_reason || ''}">
+ 
+</td>
+ 
+<!-- COMMENTS -->
+ 
+<td>
+<input
+type="text"
+class="comments"
+value="${row.comments || ''}">
+</td>
+ 
+<!-- INTERNAL STATUS -->
+ 
+<td>
+ 
+<select class="status">
+ 
+<option value="Non-compliant"
+${row.internal_status === "Non-compliant" ? "selected" : ""}>
+Non-compliant
+</option>
+ 
+<option value="Compliant"
+${row.internal_status === "Compliant" ? "selected" : ""}>
+Compliant
+</option>
+ 
+<option value="Pending Validation"
+${row.internal_status === "Pending Validation" ? "selected" : ""}>
+Pending Validation
+</option>
+ 
+<option value="Exception Approved"
+${row.internal_status === "Exception Approved" ? "selected" : ""}>
+Exception Approved
+</option>
+ 
+</select>
+ 
+</td>
+ 
+<!-- VENDOR STATUS -->
+ 
+<td>
+ 
+<select class="vendor-status">
+ 
+<option value=""
+${!row.vendor_status ? "selected" : ""}>
+Select
+</option>
+ 
+<option value="Patch Available"
+${row.vendor_status === "Patch Available" ? "selected" : ""}>
+Patch Available
+</option>
+
+<option value="Not Assessed"
+${row.vendor_status === "Not Assessed" ? "selected" : ""}>
+Not Assessed
+</option>
+ 
+<option value="No Vendor Update"
+${row.vendor_status === "No Vendor Update" ? "selected" : ""}>
+No Vendor Update
+</option>
+ 
+<option value="Vendor Dependency"
+${row.vendor_status === "Vendor Dependency" ? "selected" : ""}>
+Vendor Dependency
+</option>
+ 
+<option value="Funding Pending"
+${row.vendor_status === "Funding Pending" ? "selected" : ""}>
+Funding Pending
+</option>
+ 
+<option value="Upgrade Planned"
+${row.vendor_status === "Upgrade Planned" ? "selected" : ""}>
+Upgrade Planned
+</option>
+ 
+</select>
+ 
+</td>
+<!-- RECOMMENDED ACTION -->
+ 
+<td class="recommended-action">
+ 
+${row.recommended_action || "MANUAL_REVIEW"}
+ 
+</td>
+<!-- ACTION STATUS -->
+ 
+<td class="action-status">
+ 
+${row.action_status || ""}
+ 
+</td>
+<td>
+ 
+<button
+onclick="openMeetingModal('${row.asn}')">
+ 
+📅 Schedule
+ 
+</button>
+ 
+<br>
+ 
+<small>
+ 
+${row.meeting_status || "NOT SCHEDULED"}
+
+<br>
+${row.meeting_start? row.meeting_start.replace("T","").substring(0,16):""}
+<br>
+${row.meeting_link?`<a href="${row.meeting_link}" target="_blank">Join</a>`:""}
+ 
+</small>
+ 
+</td>
+ 
+ 
+<!-- ACTION -->
+ 
+<td>
+ 
+<button onclick="openEditModal('${row.asn}')">
+✏️
+</button>
+ 
+</td>
+<!-- MAIL STATUS -->
+ 
+<td class="mail-status">
+${row.send_status || "NOT SENT"}
+</td>
+
+<!-- TRACKING -->
+ 
+<td>
+ 
+<button
+class="tracking-btn"
+onclick="openSendTrixTracking('${row.name}')"
+title="Open in SendTrix">
+ 
+<i class="fa-solid fa-arrow-up-right-from-square"></i>
+ 
+</button>
+ 
+</td>
+
+<!-- SEND MAIL -->
+ 
+<td>
+ 
+<label class="switch">
+ 
+<input
+type="checkbox"
+class="send-mail"
+${row.send_mail ? "checked" : ""}>
+ 
+<span class="slider round"></span>
+ 
+</label>
+ 
+</td>
+ 
+<!-- SAVE -->
+ 
+<td>
+ 
+<button onclick="saveRow('${row.asn}')">
+Save
+</button>
+ 
+</td>
+ 
+</tr>
+ 
+`;
+ 
+ // ==========================================
+ // DYNAMIC UI LOGIC
+ // ==========================================
+ 
+ const createdRow =
+ document.getElementById(`row-${row.asn}`);
+ 
+ updateComplianceUI(createdRow);
+ 
+ });
+ 
+ await loadDrafts();
+ 
+ await loadCategories();
+ updateCountdowns();
+ console.timeEnd("render");
+}
+document.querySelectorAll(".upload-date").forEach(td => {
+ 
+    const utc = td.dataset.date;
+ 
+    const date = new Date(utc);
+ 
+    td.textContent = date.toLocaleString("en-IN", {
+        day: "2-digit",
+        month: "short",
+        year: "numeric",
+        hour: "2-digit",
+        minute: "2-digit",
+        hour12: true,
+        timeZone: "Asia/Kolkata"
+    });
+ 
+});
+function openBulkComplianceModal() {
+ 
+    const checkboxes = document.querySelectorAll(
+        "#masterTable .master-row-checkbox:checked"
+    );
+ 
+    if (checkboxes.length === 0) {
+        alert("Please select at least one application.");
+        return;
+    }
+ 
+    // Update selected count
+    const countElement = document.getElementById("bulkSelectedCount");
+ 
+    if (countElement) {
+        countElement.innerText =
+            `${checkboxes.length} application${checkboxes.length === 1 ? "" : "s"} selected`;
+    }
+ 
+    // Populate Draft dropdown
+    const draftSelect = document.getElementById("bulkModalDraft");
+ 
+    draftSelect.innerHTML =
+        `<option value="">Select Draft</option>`;
+ 
+    window.ALL_DRAFTS.forEach(draft => {
+ 
+        const option = document.createElement("option");
+ 
+        option.value = draft.id;
+ 
+        option.textContent =
+            draft.name || draft.subject || `Draft ${draft.id}`;
+ 
+        draftSelect.appendChild(option);
+    });
+ 
+    // Populate Category dropdown
+    const categorySelect =
+        document.getElementById("bulkModalCategory");
+ 
+    categorySelect.innerHTML =
+        `<option value="">Select Category</option>`;
+ 
+    window.ALL_CATEGORIES.forEach(category => {
+ 
+        const option = document.createElement("option");
+ 
+        option.value = category.name;
+ 
+        option.textContent =category.name;
+ 
+        categorySelect.appendChild(option);
+    });
+ 
+    // Open modal
+    document.getElementById("bulkComplianceModal").style.display = "flex";
+}
+function closeBulkComplianceModal() {
+ 
+    const modal =
+        document.getElementById("bulkComplianceModal");
+ 
+    if (modal) {
+        modal.style.display = "none";
+    }
+}
+async function sendSelectedComplianceMails() {
+ 
+    const draftId = document.getElementById("bulkModalDraft").value;
+    const category = document.getElementById("bulkModalCategory").value;
+    console.log("Selected Draft ID:", draftId);
+    console.log("Selected Category ID:", category);
+ 
+    if (!draftId || !category) {
+        alert("Please select both Draft and Category.");
+        return;
+    }
+ 
+    const checkboxes = document.querySelectorAll(
+        "#masterTable .master-row-checkbox:checked"
+    );
+ 
+    if (checkboxes.length === 0) {
+        alert("No applications selected.");
+        return;
+    }
+ 
+    const items = [];
+ 
+    checkboxes.forEach(checkbox => {
+ 
+        const row = checkbox.closest("tr");
+ 
+        if (!row) return;
+ 
+        const asn = row.id.replace("row-", "");
+ 
+        items.push({
+            asn: asn,
+            draft_id: draftId,
+            category: category
+        });
+    });
+ 
+    if (items.length === 0) {
+        alert("No valid applications selected.");
+        return;
+    }
+ 
+    const sendButton =
+        document.querySelector(
+            "#bulkComplianceModal .mail-save-btn"
+        );
+ 
+    if (sendButton) {
+        sendButton.disabled = true;
+        sendButton.innerHTML = "⏳ Sending...";
+    }
+ 
+    showLoading(
+        `Sending compliance emails for ${items.length} applications...`
+    );
+ 
+    try {
+ 
+        const res = await fetch(
+            "/applications/send-master-consolidated",
+            {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json"
+                },
+                body: JSON.stringify({
+                    items: items
+                })
+            }
+        );
+ 
+        const data = await res.json();
+ 
+        hideLoading();
+ 
+        if (!res.ok || data.error) {
+            throw new Error(
+                data.error || "Failed to send compliance emails."
+            );
+        }
+ 
+        closeBulkComplianceModal();
+ 
+        alert(
+            `Sent: ${data.sent}\nFailed: ${data.failed}`
+        );
+ 
+        location.reload();
+ 
+    } catch (error) {
+ 
+        hideLoading();
+ 
+        console.error(
+            "Bulk compliance mail error:",
+            error
+        );
+ 
+        alert(
+            "Error sending compliance emails."
+        );
+ 
+    } finally {
+ 
+        if (sendButton) {
+            sendButton.disabled = false;
+            sendButton.innerHTML = "📧 Send Emails";
+        }
+    }
+}
+function updateMasterSelection() {
+    const checkboxes = document.querySelectorAll(
+        "#masterTable .master-row-checkbox"
+    );
+ 
+    const selected = Array.from(checkboxes).filter(cb => cb.checked);
+ 
+    const count = selected.length;
+ 
+    const counter = document.getElementById("masterSelectionCount");
+    const sendBtn = document.getElementById("bulkComplianceMailBtn");
+ 
+    if (counter) {
+        counter.innerText =
+            `${count} application${count === 1 ? "" : "s"} selected`;
+    }
+ 
+    if (sendBtn) {
+        sendBtn.style.display=count>0 ? "inline-block":"none";
+    }
+ 
+    // Update Select All checkbox
+    const selectAll = document.getElementById("selectAllMaster");
+ 
+    if (selectAll) {
+        selectAll.checked =
+            checkboxes.length > 0 &&
+            selected.length === checkboxes.length;
+ 
+        selectAll.indeterminate =
+            selected.length > 0 &&
+            selected.length < checkboxes.length;
+    }
+}
+function toggleAllMasterRows(selectAllCheckbox) {
+    const rows = document.querySelectorAll("#masterTable tr");
+ 
+    rows.forEach(row => {
+        // Ignore rows hidden by the search/filter
+        if (row.style.display === "none") {
+            return;
+        }
+ 
+        const checkbox = row.querySelector(".master-row-checkbox");
+ 
+        if (checkbox) {
+            checkbox.checked = selectAllCheckbox.checked;
+        }
+    });
+ 
+    updateMasterSelection();
+}
+ 
+
+function closeEvidenceModal() {
+ 
+    document.getElementById("evidenceModal").style.display = "none";
+ 
+}
+ 
+async function viewEvidence(asn) {
+ 
+    document.getElementById("evidenceModal").style.display = "block";
+ 
+    document.getElementById("evidenceContent").innerHTML =
+        "Loading evidence...";
+ 
+}
+ 
+ 
+ 
+ 
+async function loadComparisons() {
+ 
+const res = await fetch("/applications/comparison-files");
+ 
+const data = await res.json();
+ 
+const table = document.getElementById("comparisonFilesTable");
+ 
+table.innerHTML = "";
+ 
+data.forEach(row => {
+ 
+table.innerHTML += `
+<tr>
+ 
+<td>${row.id}</td>
+<td>${row.created_at}</td>
+<td>${row.status}</td>
+ 
+<td>
+<button onclick="openReview(${row.id})">
+Open Review
+</button>
+</td>
+ 
+</tr>
+`;
+});
+}
+async function generateConsolidated() {
+ 
+ if (!window.CURRENT_COMPARISON_ID) {
+ 
+ alert("No comparison selected");
+ 
+ return;
+ }
+ 
+ const res = await fetch(
+ 
+ `/applications/generate-consolidated/${window.CURRENT_COMPARISON_ID}`,
+ 
+ {
+ method: "POST"
+ }
+ 
+ );
+ 
+ const data = await res.json();
+ 
+ alert(data.message);
+ 
+}
+ 
+async function openReview(comparisonId) {
+ 
+window.CURRENT_COMPARISON_ID = comparisonId;
+ 
+document.getElementById("reviewPanel").style.display = "block";
+ 
+const res = await fetch(
+`/applications/review-data/${comparisonId}`
+);
+ 
+const data = await res.json();
+ 
+const table = document.getElementById("comparisonTable");
+ 
+table.innerHTML = "";
+ 
+data.forEach(row => {
+ 
+let color = "";
+ 
+if (row.type === "ADDED") {
+    color = "#d4edda";
+}
+else if (row.type === "MODIFIED") {
+    color = "#fff3cd";
+}
+else if (row.type === "MISSING") {
+    color = "#f8d7da";
+}
+ 
+table.innerHTML += `
+<tr style="background:${color};">
+ 
+    <td>${row.asn}</td>
+    <td>${row.change_count}</td>
+    <td>${row.type}</td>
+    <td>${row.status}</td>
+ 
+    <td>
+        <button onclick="viewChanges('${row.asn}')">
+            View Changes
+        </button>
+    </td>
+ 
+</tr>
+`;
+});
+ 
+}
+async function updateChangeStatus(changeId, status) {
+ 
+await fetch("/applications/update-change-status", {
+method: "POST",
+headers: {
+"Content-Type": "application/json"
+},
+body: JSON.stringify({
+change_id: changeId,
+status: status
+})
+});
+ 
+loadComparisons();
+}
+function downloadFinalExcel() {
+ 
+if (!window.CURRENT_COMPARISON_ID) {
+alert("No comparison selected");
+return;
+}
+ 
+window.location.href =
+`/applications/download-final/${window.CURRENT_COMPARISON_ID}`;
+}
+function setMaster(uploadId) {
+    fetch(`/applications/set-master/${uploadId}`, { method: "POST" })
+    .then(res => res.json())
+    .then(data => {
+        alert(data.message);
+        location.reload();
+    });
+}
+ 
+function runComparison(uploadId) {
+ 
+ fetch(`/applications/compare/${uploadId}`, {
+ method: "POST"
+ })
+ .then(res => res.json())
+ .then(data => {
+ 
+ if (data.error) {
+ alert(data.error);
+ return;
+ }
+ 
+ window.CURRENT_COMPARISON_ID = data.comparison_id;
+ 
+ showTab("comparison");
+ 
+ loadComparisons(data.comparison_id);
+ 
+ });
+}
+function renameUpload(id, currentName){
+ 
+    const newName = prompt(
+        "Enter new file name:",
+        currentName
+    );
+ 
+    if(!newName || newName === currentName){
+        return;
+    }
+ 
+    fetch(`/rename-upload/${id}`,{
+        method:"POST",
+        headers:{
+            "Content-Type":"application/json"
+        },
+        body:JSON.stringify({
+            file_name:newName
+        })
+    })
+    .then(res=>res.json())
+    .then(data=>{
+        alert(data.message);
+        location.reload();
+    });
+ 
+}
+ 
+function deleteUpload(id){
+ 
+    if(!confirm("Are you sure you want to delete this upload?")){
+        return;
+    }
+ 
+    fetch(`/delete-upload/${id}`,{
+        method:"POST"
+    })
+    .then(res=>res.json())
+    .then(data=>{
+        alert(data.message);
+        location.reload();
+    });
+ 
+}
+ 
+ 
+
+function uploadFile() {
+const fileInput = document.getElementById("fileInput");
+ 
+if (!fileInput.files.length) {
+alert("Please select a file");
+return;
+}
+ 
+const formData = new FormData();
+formData.append("file", fileInput.files[0]);
+ 
+fetch("/upload", {
+method: "POST",
+body: formData
+})
+.then(res => res.json())
+.then(data => {
+alert(data.message);
+location.reload();
+});
+}
+function demoteMaster() {
+fetch(`/applications/demote-master`, { method: "POST" })
+.then(res => res.json())
+.then(data => {
+alert(data.message);
+location.reload();
+});
+}
+function saveRow(asn) {
+ 
+ const row = document.getElementById(`row-${asn}`);
+ 
+ const frequency =
+ row.querySelector(".frequency-input").value;
+
+ const frequency_unit =
+ row.querySelector(".freq-unit").value;
+ 
+ const comments =
+ row.querySelector(".comments").value;
+ 
+ const internal_status =
+ row.querySelector(".status").value;
+ 
+ const send_mail =
+ row.querySelector(".send-mail").checked ? 1 : 0;
+
+ const vendor_status =
+ row.querySelector(".vendor-status").value;
+
+ const actionCell =
+ row.querySelector(".recommended-action");
+ 
+ // =====================================
+ // NEW FIELDS
+ // =====================================
+ 
+ const compliance_mode =
+ row.querySelector(".compliance-mode").value;
+ 
+ const remediation_due_date =
+ row.querySelector(".remediation-date").value;
+
+ const review_start_date =
+ row.querySelector(".review-start-date").value;
+ 
+ const exception_reason =
+ row.querySelector(".exception-reason").value;
+ 
+ // =====================================
+ 
+ fetch("/applications/save-analysis", {
+ 
+ method: "POST",
+ 
+ headers: {
+ "Content-Type": "application/json"
+ },
+ 
+ body: JSON.stringify({
+ 
+ upload_id: window.CURRENT_UPLOAD_ID,
+ 
+ asn: asn,
+ 
+ frequency: frequency,
+ frequency_unit:frequency_unit,
+ comments: comments,
+ internal_status: internal_status,
+ send_mail: send_mail,
+ vendor_status:vendor_status,
+ 
+ compliance_mode: compliance_mode,
+ remediation_due_date: remediation_due_date,
+ exception_reason: exception_reason,
+ review_start_date:review_start_date
+ 
+ })
+ })
+ 
+ .then(res => res.json())
+ 
+ .then(data => {
+  if (data.recommended_action){
+    actionCell.innerText=data.recommended_action;
+  }
+  if (data.send_mail !== undefined) {
+    row.querySelector(".send-mail").checked =
+        data.send_mail === 1;
+  }
+ alert("Saved successfully");
+ });
+}
+
+let sendingInProgress=false;
+async function sendMasterMails() {
+
+    const btn = document.getElementById("sendComplianceBtn");
+    if(btn.disabled){
+        return;
+    }
+    btn.disabled = true;
+    btn.innerHTML = "⏳ Sending...";
+ 
+    const defaultDraft = document.getElementById("defaultDraft").value;
+    const defaultCategory = document.getElementById("defaultCategory").value;
+ 
+    if (!defaultDraft || !defaultCategory) {
+        alert("Select default draft and category");
+        btn.disabled=false;
+        btn.innerHTML="📧 Send Compliance Emails";
+        return;
+    }
+ 
+    const rows = document.querySelectorAll("#masterTable tr");
+ 
+    let items = [];
+ 
+    rows.forEach(row => {
+        const asn = row.id.replace("row-", "");
+        const toggle = row.querySelector(".send-mail");
+ 
+        if (!toggle.checked) return;
+ 
+        const rowConfig = window.ROW_CONFIG[asn] || {};
+ 
+        items.push({
+            asn: asn,
+            draft_id: rowConfig.draft_id || defaultDraft,
+            category: rowConfig.category || defaultCategory
+        });
+    });
+ 
+    if (items.length === 0) {
+        alert("No rows selected");
+        btn.disabled=false;
+        btn.innerHTML="📧 Send Compliance Emails";
+        return;
+    }
+    showLoading("Sending Compliance Emails...");
+    await new Promise(resolve => setTimeout(resolve,100));
+    console.log("Overlay Shown");
+    await new Promise(resolve => setTimeout(resolve, 100));
+ 
+    try {
+        const res = await fetch("/applications/send-master-mails", {
+            method: "POST",
+            headers: {"Content-Type": "application/json"},
+            body: JSON.stringify({ items })
+        });
+        const data = await res.json();
+        
+        hideLoading()
+        alert(`Sent: ${data.sent}, Failed: ${data.failed}`);
+        // Refresh the page so latest statuses are shown
+        location.reload();
+    }
+    catch (err) {
+        hideLoading()
+        alert("Error sending compliance emails.");
+    }
+    finally {
+        btn.disabled = false;
+        btn.innerHTML = "📧 Send Compliance Emails";
+    }
+}
+async function applyChange(changeId) {
+ 
+    const res = await fetch(
+        `/applications/apply-change/${changeId}`,
+        {
+            method: "POST"
+        }
+    );
+ 
+    const data = await res.json();
+ 
+    alert(data.message);
+ 
+    openReview(window.CURRENT_COMPARISON_ID);
+}
+ 
+async function ignoreChange(changeId) {
+ 
+    const res = await fetch(
+        `/applications/ignore-change/${changeId}`,
+        {
+            method: "POST"
+        }
+    );
+ 
+    const data = await res.json();
+ 
+    alert(data.message);
+ 
+    openReview(window.CURRENT_COMPARISON_ID);
+}
+ 
+
+async function loadDrafts() {
+  const res = await fetch("/applications/get-drafts");
+  const drafts = await res.json();
+ 
+  window.ALL_DRAFTS = drafts;
+ 
+  const globalDraft = document.getElementById("defaultDraft");
+  globalDraft.innerHTML = `<option value="">Select Default Draft</option>`;
+ 
+  drafts.forEach(d => {
+    globalDraft.innerHTML += `<option value="${d.id}">${d.subject}</option>`;
+  });
+}
+async function loadCategories() {
+  const res = await fetch("api/categories"); // your existing route
+  const categories = await res.json();
+ 
+  window.ALL_CATEGORIES = categories;
+ 
+  const globalCat = document.getElementById("defaultCategory");
+  globalCat.innerHTML = `<option value="">Select Default Category</option>`;
+ 
+  categories.forEach(c => {
+    globalCat.innerHTML += `<option value="${c.name}">${c.name}</option>`;
+  });
+}
+document.getElementById("defaultDraft").addEventListener("change", function () {
+  window.DEFAULT_DRAFT_ID = this.value;
+});
+document.getElementById("defaultCategory").addEventListener("change", function () {
+  window.DEFAULT_CATEGORY = this.value;
+});
+function openEditModal(asn) {
+ window.CURRENT_EDIT_ASN = asn;
+ 
+ const config = window.ROW_CONFIG[asn] || {};
+ 
+ // 🔥 fallback logic
+ const selectedDraft = config.draft_id || window.DEFAULT_DRAFT_ID || "";
+ const selectedCategory = config.category || window.DEFAULT_CATEGORY || "";
+ 
+ const draftSelect = document.getElementById("modalDraft");
+ draftSelect.innerHTML = `<option value="">Default</option>`;
+ 
+ window.ALL_DRAFTS.forEach(d => {
+ draftSelect.innerHTML += `
+ <option value="${d.id}" ${selectedDraft === d.id ? "selected" : ""}>
+ ${d.subject}
+ </option>
+ `;
+ });
+ 
+ const catSelect = document.getElementById("modalCategory");
+ catSelect.innerHTML = `<option value="">Default</option>`;
+ 
+ window.ALL_CATEGORIES.forEach(c => {
+ catSelect.innerHTML += `
+ <option value="${c.name}" ${selectedCategory === c.name ? "selected" : ""}>
+ ${c.name}
+ </option>
+ `;
+ });
+ 
+ document.getElementById("editModal").style.display = "flex";
+}
+
+async function saveModal() {
+ const asn = window.CURRENT_EDIT_ASN;
+ 
+ const draft_id = document.getElementById("modalDraft").value;
+ const category = document.getElementById("modalCategory").value;
+ 
+ // 🔥 Save locally
+ window.ROW_CONFIG[asn] = {
+   draft_id,
+   category
+ };
+ 
+ // 🔥 Save to DB
+ await fetch("/applications/save-mail-config", {
+   method: "POST",
+   headers: {
+     "Content-Type": "application/json"
+   },
+   body: JSON.stringify({
+     upload_id: window.CURRENT_UPLOAD_ID,
+     asn: asn,
+     draft_id: draft_id,
+     category: category
+   })
+ });
+ 
+ alert("Saved successfully");
+ closeModal();
+}
+ 
+function closeModal() {
+  document.getElementById("editModal").style.display = "none";
+}
+function previewDraftModal() {
+  const draft_id = document.getElementById("modalDraft").value;
+ 
+  if (!draft_id) {
+    alert("Select a draft first");
+    return;
+  }
+ 
+  fetch(`/applications/preview-draft/${draft_id}`)
+    .then(res => res.json())
+    .then(data => {
+      alert(data.subject + "\n\n" + data.body);
+    });
+}
+ 
+function previewCategoryModal() {
+  const category = document.getElementById("modalCategory").value;
+ 
+  if (!category) {
+    alert("Select a category first");
+    return;
+  }
+ 
+  fetch(`/get_category_details/${category}`)
+    .then(res => res.json())
+    .then(data => {
+      alert(JSON.stringify(data, null, 2));
+    });
+}
+
+async function loadActionMappings() {
+   if (!window.ALL_DRAFTS.length) {
+        await loadDrafts();
+    }
+ 
+    if (!window.ALL_CATEGORIES.length) {
+        await loadCategories();
+    }
+ 
+    const res = await fetch("/applications/action-mappings");
+    const data = await res.json();
+ 
+    const table = document.getElementById("actionMappingTable");
+    table.innerHTML = "";
+ 
+    data.forEach(row => {
+ 
+        table.innerHTML += `
+        <tr>
+ 
+            <td>${row.recommended_action}</td>
+ 
+            <td>
+                <select class="draft-select"
+                        data-action="${row.recommended_action}">
+                    <option value="">Select Draft</option>
+                </select>
+            </td>
+ 
+            <td>
+                <select class="category-select"
+                        data-action="${row.recommended_action}">
+                    <option value="">Select Category</option>
+                </select>
+            </td>
+ 
+            <td>
+                <button onclick="saveActionMapping('${row.recommended_action}')">
+                    Save
+                </button>
+            </td>
+ 
+        </tr>
+        `;
+    });
+ 
+    // populate dropdowns after rows exist
+    populateActionDropdowns(data);
+}
+function populateActionDropdowns(data) {
+ 
+    const rows = document.querySelectorAll(
+        "#actionMappingTable tr"
+    );
+ 
+    rows.forEach((tr, index) => {
+ 
+        const row = data[index];
+ 
+        const draftSelect =
+            tr.querySelector(".draft-select");
+ 
+        const categorySelect =
+            tr.querySelector(".category-select");
+ 
+        // Drafts
+        window.ALL_DRAFTS.forEach(d => {
+ 
+            draftSelect.innerHTML += `
+                <option value="${d.id}">
+                    ${d.subject}
+                </option>
+            `;
+        });
+ 
+        // Categories
+        window.ALL_CATEGORIES.forEach(c => {
+ 
+            categorySelect.innerHTML += `
+                <option value="${c.name}">
+                    ${c.name}
+                </option>
+            `;
+        });
+ 
+        // Restore saved values
+        if (row.draft_id) {
+            draftSelect.value = row.draft_id;
+        }
+ 
+        if (row.category_name) {
+            categorySelect.value = row.category_name;
+        }
+ 
+    });
+}
+async function saveActionMapping(action) {
+ 
+    const row = document.querySelector(
+        `select[data-action="${action}"]`
+    ).closest("tr");
+ 
+    const draft_id =
+        row.querySelector(".draft-select").value;
+ 
+    const category_name =
+        row.querySelector(".category-select").value;
+ 
+    const res = await fetch(
+        "/applications/save-action-mapping",
+        {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json"
+            },
+            body: JSON.stringify({
+                recommended_action: action,
+                draft_id: draft_id,
+                category_name: category_name
+            })
+        }
+    );
+ 
+    const data = await res.json();
+    alert(data.message || "Saved");
+}
+function updateCountdowns() {
+ 
+ document
+ .querySelectorAll(".countdown")
+ .forEach(cell => {
+ 
+ const due =
+ cell.dataset.due;
+ console.log("DUE_FROM_UI:",due,"PARSED:",new Date(due));
+ 
+ if (!due) {
+ cell.innerText = "-";
+ return;
+ }
+ 
+ const diff =
+ new Date(due) - new Date();
+ 
+ if (diff <= 0) {
+ 
+cell.innerText = "⛔ EXPIRED";
+ 
+cell.style.color = "red";
+cell.style.fontWeight = "bold";
+ 
+return;
+}
+ 
+ const totalSeconds =
+ Math.floor(diff / 1000);
+ 
+ const days =
+ Math.floor(totalSeconds / 86400);
+ 
+ const hours =
+ Math.floor((totalSeconds % 86400) / 3600);
+ 
+ const minutes =
+ Math.floor((totalSeconds % 3600) / 60);
+ 
+ const seconds =
+ totalSeconds % 60;
+
+ cell.style.fontWeight = "bold";
+ 
+if (days > 7) {
+    cell.style.color = "green";
+}
+else if (days > 1) {
+    cell.style.color = "orange";
+}
+else {
+    cell.style.color = "red";
+}
+ 
+ cell.innerText =
+`${String(days).padStart(2,"0")}d `
++ `${String(hours).padStart(2,"0")}h `
++ `${String(minutes).padStart(2,"0")}m `
++ `${String(seconds).padStart(2,"0")}s`;
+ 
+ });
+}
+setInterval(
+updateCountdowns,
+1000
+);
+function openMeetingModal(asn){
+ 
+window.CURRENT_MEETING_ASN = asn;
+ 
+document.getElementById(
+   "meetingModal"
+).classList.add("show");
+ 
+loadMeetingSuggestions(asn);
+ 
+}
+function openMeetingModal(asn){
+ 
+ window.CURRENT_MEETING_ASN = asn;
+ 
+ document.getElementById(
+ "meetingAsn"
+ ).innerText =
+ "Application: " + asn;
+ 
+ document.getElementById(
+ "meetingModal"
+ ).classList.add("show");
+ 
+ loadMeetingSuggestions(asn);
+ 
+}
+ 
+function closeMeetingModal(){
+ 
+ document.getElementById(
+ "meetingModal"
+ ).classList.remove("show");
+ 
+}
+async function loadMeetingSuggestions(asn){
+
+ const duration=document.getElementById("meetingDuration").value;
+ 
+ const res = await fetch(
+ `/applications/suggest-slots/${asn}?duration=${duration}`
+ );
+ 
+ const data = await res.json();
+ const slots=data.slots;
+ const person=data.person;
+ const workingHours=data.workingHours;
+ document.getElementById("workingHoursCard").innerHTML=`
+<div class="working-hours-title">
+🕒 Working Hours
+</div>
+ 
+<div class="working-hours-time">
+${workingHours.start.substring(0,5)} -
+${workingHours.end.substring(0,5)}
+(${workingHours.timezone})
+</div>
+`;
+ 
+ 
+ let html = "";
+ 
+const grouped = {};
+ 
+slots.forEach(slot => {
+ 
+    const d = new Date(slot.time);
+ 
+    const key = d.toDateString();
+ 
+    if (!grouped[key]) {
+        grouped[key] = [];
+    }
+ 
+    grouped[key].push(slot);
+ 
+});
+ 
+let first = true;
+ 
+for (const date in grouped) {
+    const today = new Date();
+today.setHours(0,0,0,0);
+ 
+const currentDate = new Date(date);
+currentDate.setHours(0,0,0,0);
+ 
+const diff =
+(currentDate - today)/(1000*60*60*24);
+ 
+let displayDate;
+ 
+if(diff===0){
+ 
+displayDate="Today";
+ 
+}
+else if(diff===1){
+ 
+displayDate="Tomorrow";
+ 
+}
+else{
+ 
+displayDate=currentDate.toLocaleDateString(
+undefined,
+{
+weekday:"long",
+day:"numeric",
+month:"short"
+}
+);
+ 
+}
+ 
+ 
+    html += `
+    <div class="slot-group">
+        <h4 class="slot-date-header">📅 ${displayDate}</h4>
+ 
+        <div class="slot-grid">
+    `;
+ 
+    grouped[date].forEach((slot,index) => {
+ 
+        const d = new Date(slot.time);
+ 
+        html += `
+        <label class="slot-card ${first ?'recommended-slot':''}">
+ 
+            <input
+                type="radio"
+                name="meetingSlot"
+                value="${slot.time}"
+                ${first ? "checked" : ""}>
+ 
+            <div>
+ 
+                <strong>
+                    ${d.toLocaleTimeString([],{
+                        hour:"2-digit",
+                        minute:"2-digit"
+                    })}
+                </strong>
+ 
+                <br>
+ 
+                <small>
+                    ${d.toLocaleDateString()}
+                </small>
+                
+                <div class="slot-status ${slot.status}">${slot.status.toUpperCase()}</div>
+                ${first ? `<div class="recommended-badge">⭐ Recommended</div>` : ""}
+ 
+            </div>
+ 
+        </label>
+        `;
+ 
+        first = false;
+ 
+    });
+ 
+    html += `
+        </div>
+    </div>
+    `;
+ 
+}
+ 
+
+ document.getElementById("meetingPriorityPerson").innerHTML = `
+<b>Scheduling Based On</b>
+ 
+<div class="person-card">
+ 
+<div class="person-avatar">
+👤
+</div>
+ 
+<div>
+ 
+<div class="person-name">
+${person?.name || "Unknown"}
+</div>
+ 
+<div class="person-email">
+${person?.email || "Unknown"}
+</div>
+ 
+</div>
+ 
+</div>
+ 
+`;
+ 
+ document.getElementById("meetingSlots").innerHTML =html
+
+document.querySelectorAll(".slot-card").forEach(card=>{
+ 
+card.addEventListener("click",()=>{
+ 
+document.querySelectorAll(".slot-card")
+.forEach(c=>c.classList.remove("selected"));
+ 
+card.classList.add("selected");
+ 
+});
+ 
+});
+ 
+}
+async function createMeeting(){
+ 
+ const selectedSlot =
+ document.querySelector(
+ 'input[name="meetingSlot"]:checked'
+ );
+ 
+ if (!selectedSlot){
+    alert("Select a slot");
+    return;
+ }
+ 
+ const duration =
+ document.getElementById(
+ "meetingDuration"
+ ).value;
+ 
+ const res = await fetch(
+ "/applications/create-meeting",
+ {
+   method:"POST",
+   headers:{
+      "Content-Type":"application/json"
+   },
+   body:JSON.stringify({
+ 
+      asn:
+      window.CURRENT_MEETING_ASN,
+ 
+      start_time:
+      selectedSlot.value,
+ 
+      duration:
+      duration
+ 
+   })
+ });
+ 
+ const data =
+ await res.json();
+ 
+ alert(data.message);
+ 
+ closeMeetingModal();
+ 
+}
+
+function closeChangesModal() {
+    document.getElementById(
+        "changesModal"
+    ).style.display = "none";
+}
+async function viewChanges(asn) {
+ 
+    const comparisonId = window.CURRENT_COMPARISON_ID;
+ 
+    const res = await fetch(
+        `/applications/asn-changes/${comparisonId}/${asn}`
+    );
+ 
+    const data = await res.json();
+ 
+    const tbody = document.getElementById(
+        "changesModalTable"
+    );
+ 
+    const title = document.getElementById(
+        "changesModalTitle"
+    );
+ 
+    title.innerText =
+        `Application Changes - ${asn}`;
+ 
+    tbody.innerHTML = "";
+ 
+    data.forEach(row => {
+ 
+        let color = "";
+ 
+        if (row.type === "ADDED") {
+            color = "#d4edda";
+        }
+        else if (row.type === "MODIFIED") {
+            color = "#fff3cd";
+        }
+        else if (row.type === "MISSING") {
+            color = "#f8d7da";
+        }
+ 
+        tbody.innerHTML += `
+            <tr style="background:${color}">
+                <td>${row.field}</td>
+                <td>${row.old}</td>
+                <td>${row.new}</td>
+                <td>${row.type}</td>
+                <td>
+                    <button onclick="applyChange(${row.id})">
+                        Apply
+                    </button>
+                    <button onclick="ignoreChange(${row.id})">
+                        Ignore
+                    </button>
+                </td>
+            </tr>
+        `;
+    });
+ 
+document.getElementById("changesModal").style.display = "block";
+}
+async function applyAllChanges() {
+ 
+    const res = await fetch(
+        `/applications/apply-all/${window.CURRENT_COMPARISON_ID}`,
+        {
+            method: "POST"
+        }
+    );
+ 
+    const data = await res.json();
+ 
+    alert(data.message);
+ 
+    openReview(window.CURRENT_COMPARISON_ID);
+}
+ 
+async function ignoreAllChanges() {
+ 
+    const res = await fetch(
+        `/applications/ignore-all/${window.CURRENT_COMPARISON_ID}`,
+        {
+            method: "POST"
+        }
+    );
+ 
+    const data = await res.json();
+ 
+    alert(data.message);
+ 
+    openReview(window.CURRENT_COMPARISON_ID);
+}
+function filterTrackora(){
+ 
+const search =
+document.getElementById("trackoraSearch")
+.value
+.toLowerCase();
+ 
+const rows =
+document.querySelectorAll("#masterTable tr");
+ 
+rows.forEach(row => {
+ 
+const text =
+row.innerText.toLowerCase();
+ 
+row.style.display =
+text.includes(search)
+? ""
+: "none";
+ 
+});
+updateMasterSelection();
+ 
+}
+function openSendTrixTracking(appName){
+ 
+window.open(
+`http://127.0.0.1:5000/?search=${encodeURIComponent(appName)}`,
+"_blank"
+);
+ 
+}
+function filterMasterTable(filterType){
+ 
+const rows =
+document.querySelectorAll("#masterTable tr");
+ 
+rows.forEach(row => {
+ 
+if(filterType === "ALL"){
+row.style.display = "";
+return;
+}
+ 
+const statusSelect =
+row.querySelector(".status");
+ 
+const mailStatusCell =
+row.querySelector(".mail-status");
+ 
+if(!statusSelect){
+return;
+}
+ 
+const currentStatus =
+statusSelect.value;
+ 
+const currentMailStatus =
+mailStatusCell
+? mailStatusCell.innerText.trim()
+: "";
+ 
+if(filterType === "MAIL_SENT"){
+ 
+row.style.display =
+(currentMailStatus !== "NOT SENT")
+? ""
+: "none";
+ 
+return;
+}
+ 
+row.style.display =
+(currentStatus === filterType)
+? ""
+: "none";
+ 
+});
+ 
+}
+window.onload = function () {
+ 
+    const lastTab =
+        localStorage.getItem("trackora_active_tab") || "uploads";
+ 
+    showTab(lastTab);
+ 
+};
+window.onbeforeunload = function () {
+ 
+if (sendingInProgress) {
+  return "Compliance emails are currently being sent. Leaving this page may interrupt the process.";
+}
+ 
+};
+
+const HELP_CONTENT = {
+  uploads: {
+    title: "📤 Uploads Tab — What to do",
+    steps: [
+      "Upload the monthly dump exported from the client tool (SecureTrack/OneTrust).",
+      "Wait for the upload to finish processing.",
+      "Click 'Set Master' to make this upload the active dataset or Master.",
+      "You can also Rename or Demote the exisiting Master.",
+      "Once set, the data will appear automatically in the Master tab.",
+      "Click on Compare button on the file you want a comparison against the Master sheet."
+    ]
+  },
+  master: {
+    title: "📋 Master Tab — What to do",
+    steps: [
+      "Review each application's compliance status using the stat cards or search box.",
+      "Update Mode, Frequency, Dates, Comments, and Status per row as needed.",
+      "Click 'Save' on a row after making changes.",
+      "Use 'Send Compliance Emails' to send initial mails for the current status.",
+      "Use Schedule icon to schedule meeting with the latest person via teams.",
+      "Use Pencil icon to explicitly change the initial mail configuration.",
+      "Click 'Download Master' to export the full analysis as Excel.",
+      "For Followups and status use the Track Mail icon to move directly into SendTrix environment."
+    ]
+  },
+  comparison: {
+    title: "🔍 Comparison Tab — What to do",
+    steps: [
+      "This tab compares the current master against the upload you selected to compare.",
+      "Click Open Review to spot new, removed, or changed applications between cycles.",
+      "Click on Generate Consolidated Sheet to generate the overal Comparison data which shall appear in Uploads Tab"
+    ]
+  },
+  actions: {
+    title: "⚙️ Action Templates Tab — What to do",
+    steps: [
+      "Manage the draft templates and categories used when sending mails.",
+      "These templates are selected from the Master tab when sending compliance/action emails."
+    ]
+  }
+};
+ 
+function openHelp(tabName) {
+  const content = HELP_CONTENT[tabName];
+  if (!content) return;
+  document.getElementById("helpTitle").innerText = content.title;
+  document.getElementById("helpBody").innerHTML =
+    "<ol>" + content.steps.map(s => `<li>${s}</li>`).join("") + "</ol>";
+  document.getElementById("helpModal").style.display = "flex";
+}
+ 
+function closeHelpModal() {
+  document.getElementById("helpModal").style.display = "none";
+}
+
+let currentEvidenceASN = null;
+ 
+function uploadEvidence(asn) {
+ 
+    currentEvidenceASN = asn;
+ 
+    document.getElementById("evidenceFile").value = "";
+ 
+    document.getElementById("evidenceFile").click();
+ 
+}
+async function uploadSelectedEvidence() {
+ 
+    const fileInput = document.getElementById("evidenceFile");
+ 
+    if (fileInput.files.length === 0) {
+        return;
+    }
+ 
+    const file = fileInput.files[0];
+ 
+    const formData = new FormData();
+    formData.append("file", file);
+    formData.append("appser_number", currentEvidenceASN);
+ 
+    try {
+ 
+        const response = await fetch("/trackora/upload_evidence", {
+            method: "POST",
+            body: formData
+        });
+ 
+        const result = await response.json();
+ 
+        if (result.success) {
+            alert("Evidence uploaded successfully.");
+        } else {
+            alert(result.message);
+        }
+ 
+    } catch (err) {
+        console.error(err);
+        alert("Upload failed.");
+    }
+ 
+}
+
+</script>
+ 
+{% endblock %}

@@ -1,0 +1,1309 @@
+{% extends "base.html" %}
+{% block content %}
+ 
+<h2 class="page-title">Followup Dashboard</h2>
+
+<button class="secondary-btn" onclick="startTour()">
+Take a Quick Tour
+</button>
+ 
+<script>
+function startTour(){
+introJs().start();
+}
+
+</script>
+
+<style>
+.primary-btn{
+background:#2563eb;
+color:white;
+border:none;
+padding:8px 16px;
+border-radius:6px;
+font-size:14px;
+cursor:pointer;
+display:inline-flex;
+align-items:center;
+gap:6px;
+}
+ 
+.primary-btn:hover{
+background:#1d4ed8;
+}
+ 
+.secondary-btn{
+background:white;
+color:#374151;
+border:1px solid #d1d5db;
+padding:8px 14px;
+border-radius:6px;
+font-size:14px;
+cursor:pointer;
+display:inline-flex;
+align-items:center;
+gap:6px;
+}
+ 
+.secondary-btn:hover{
+background:#f3f4f6;
+}
+.primary-btn{
+box-shadow:0 1px 2px rgba(0,0,0,0.1);
+}
+ 
+.secondary-btn{
+box-shadow:0 1px 2px rgba(0,0,0,0.05);
+}
+
+.stat-icon{
+font-size:28px;
+margin-bottom:8px;
+color:#4f46e5;
+}
+ 
+button i{
+margin-right:6px;
+}
+.toolbar{
+display:flex;
+gap:12px;
+margin:20px 0;
+align-items:center;
+}
+ 
+.toolbar input{
+padding:10px;
+width:350px;
+border:1px solid #d1d5db;
+border-radius:8px;
+}
+ 
+.toolbar select{
+padding:10px;
+border:1px solid #d1d5db;
+border-radius:8px;
+}
+ 
+.table-container table tr:hover{
+background:#f8fafc;
+}
+ 
+.table-container{
+border-radius:10px;
+overflow:hidden;
+}
+.toggle-switch {
+    position: relative;
+    display: inline-block;
+    width: 44px;
+    height: 24px;
+}
+.toggle-switch input {
+    opacity: 0;
+    width: 0;
+    height: 0;
+}
+.toggle-slider {
+    position: absolute;
+    cursor: pointer;
+    top: 0; left: 0; right: 0; bottom: 0;
+    background-color: #ccc;
+    border-radius: 24px;
+    transition: 0.2s;
+}
+.toggle-slider:before {
+    position: absolute;
+    content: "";
+    height: 18px; width: 18px;
+    left: 3px; bottom: 3px;
+    background-color: white;
+    border-radius: 50%;
+    transition: 0.2s;
+}
+input:checked + .toggle-slider {
+    background-color: #28a745;
+}
+input:checked + .toggle-slider:before {
+    transform: translateX(20px);
+}
+
+</style>
+ 
+ 
+<!-- KPI SECTION -->
+<div class="kpi-container">
+    <div class="kpi-card" data-intro="This here tells your current active followups" data-step="7">
+        <i class="fa-solid fa-envelope-open-text stat-icon"></i>
+        <h3>Active</h3>
+        <p>{{ active_count }}</p>
+    </div>
+    <div class="kpi-card" data-intro="This here tells your completed followups" data-step="8">
+        <i class="fa-solid fa-circle-check stat-icon"></i>
+        <h3>Completed</h3>
+        <p>{{ completed_count }}</p>
+    </div>
+    <div class="kpi-card" data-intro="This here tells your paused followups" data-step="9">
+        <i class="fa-solid fa-comment stat-icon"></i>
+        <h3>Client Paused</h3>
+        <p>{{ client_reply_count }}</p>
+    </div>
+    <div class="kpi-card">
+        <i class="fa-solid fa-hand stat-icon"></i>
+        <h3>Manual Paused</h3>
+        <p>{{ manual_pause_count }}</p>
+    </div>
+    <div class="kpi-card" data-intro="This here sums up the total followups" data-step="10">
+        <i class="fa-solid fa-layer-group stat-icon"></i>
+        <h3>Total</h3>
+        <p>{{ total_count }}</p>
+    </div>
+</div>
+ 
+<!-- ACTION BAR -->
+<div class="action-bar">
+    
+    <div>
+        <button class="primary-btn" onclick="openModal()" data-intro="Create a category that defines how followups should be sent." data-step="3"><i class="fa-solid fa-folder-plus"></i> Create Category</button>
+        <button class="primary-btn"onclick="openWorkspaceAssignment()">
+            <i class="fa-solid fa-folder-tree"></i>
+            Assign to Workspace
+        </button>
+    </div>
+    <div>
+        <a href="/login"><button class="btn btn-primary" data-intro="Connect to your mailbox" data-step="2"><i class="fa-brands fa-microsoft"></i>Connect Outlook</button></a>
+        <a href="/run">
+            <button class="secondary-btn" onclick="if(confirmAction('Run followup process now?')){showLoading('Sending Followups...');return true;}return false;" data-intro="Run the engine to send scheduled followups" data-step="6">
+                <i class="fa-solid fa-paper-plane"></i>
+                Send Followups
+            </button>
+        </a>
+        <a href="/sync" onclick="showLoading('Syncing Mailbox...')">
+            <button class="secondary-btn" onclick="return confirmAction('Sync mailbox now?')" data-intro="Sync your mailbox" data-step="5">
+                <i class="fa-solid fa-rotate"></i>
+                Sync Mailbox
+            </button>
+        </a>
+        <a href="/refresh" onclick="showLoading('Refreshing Conversations...')">
+            <button class="secondary-btn">
+                <i class="fa-solid fa-comments"></i>
+                Refresh Conversations
+            </button>
+        </a>
+    </div>
+</div>
+ 
+<!-- FLASH MESSAGE -->
+{% with messages = get_flashed_messages() %}
+{% if messages %}
+<div class="flash">
+    {{ messages[0] }}
+</div>
+{% endif %}
+{% endwith %}
+
+<div class="toolbar">
+ 
+<input
+type="text"
+id="followupSearch"
+value="{{search}}"
+placeholder="Search Subject / Category / Status..."
+onkeyup="filterFollowups()"
+>
+ 
+<select id="statusFilter" onchange="filterFollowups()">
+<option value="">All Status</option>
+<option value="ACTIVE">ACTIVE</option>
+<option value="CLIENT_REPLY">PAUSED</option>
+<option value="MANUAL_PAUSED">MANUAL</option>
+<option value="COMPLETED">COMPLETED</option>
+</select>
+ 
+</div>
+ 
+<!-- ACTIVE SECTION -->
+<div class="section-card">
+    <div class="section-header">
+        <h3>Active Followups</h3>
+    </div>
+ 
+    <div class="table-container">
+        <table>
+            <thead>
+                <tr>
+                    <th>Select</th>
+                    <th>ID</th>
+                    <th>Subject</th>
+                    <th>Category</th>
+                    <th>Status</th>
+                    <th>Attempts</th>
+                    <th>Next Followup (IST)</th>
+                    <th>Last Followup At (IST)</th>
+                    <th>Last Updated (IST)</th>
+                    <th>Auto Followup</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for row in rows if row[3] == "ACTIVE" %}
+                <tr>
+                    <td>
+                        <input
+                        type="checkbox"
+                        class="conversation-select"
+                        value="{{ row[13] }}"
+                        >
+                    </td>
+                    <td>{{ row[0] }}</td>
+                    <td style="max-width: 300px; word-break: break-all;">{{ row[1] }}</td>
+                    <td>{{ row[2] }}</td>
+                    <td><span class="badge active">ACTIVE</span></td>
+                    <td>{{ row[4] }} / {{ row[5] }}</td>
+                    <td>{{ row[6] }}</td>
+                    <td>{{ row[8] }}</td>
+                    <td>{{ row[7] }}</td>
+                     <td>
+                        <label class="toggle-switch">
+                            <input type="checkbox"
+                                   {% if row[-1] == 1 %}checked{% endif %}
+                                   onchange="toggleAutoFollowup('{{ row[0] }}', this)">
+                            <span class="toggle-slider"></span>
+                        </label>
+                    </td>
+                    <td>
+                        <a href="/pause/{{row[0]}}" onclick="return confirm('Pause this follow-up?')">
+                            <button class="danger-btn" data-intro="Use this to pause any ongoing followups" data-step="11"><i class="fa-solid fa-pause"></i>Pause</button>
+                        </a>
+                        <a href="/reset/{{row[0]}}" onclick="return confirm('Reset this follow-up?')">
+                            <button class="secondary-btn" data-intro="Use this to reset your followups" data-step="12">Reset</button>
+                        </a>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+ 
+<!-- PAUSED SECTION -->
+<div class="section-card">
+    <div class="section-header">
+        <h3>Paused (Client Replied)</h3>
+    </div>
+ 
+    <div class="table-container">
+        <table>
+            <thead>
+                <tr>
+                    <th>ID</th>
+                    <th>Subject</th>
+                    <th>Category</th>
+                    <th>Status</th>
+                    <th>Attempts</th>
+                    <th>Next Followup (IST)</th>
+                    <th>Last Updated (IST)</th>
+                    <th>Auto Followup</th>
+                    <th>Reply</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for row in rows if row[3] == "CLIENT_REPLY" %}
+                <tr>
+                    <td>
+                        <input
+                        type="checkbox"
+                        class="conversation-select"
+                        value="{{ row[13] }}"
+                        >
+                    </td>
+                    <td>{{ row[0] }}</td>
+                    <td>{{ row[1] }}
+                        {% if row[11] == 1 %}
+                        <span style="color:red; font-weight:bold; margin-left:6px;">🔴 New Reply</span>
+                        {% endif %}
+                    </td>
+ 
+                    <td>{{ row[2] }}</td>
+                    <td><span class="badge paused">CLIENT_REPLY</span></td>
+                    <td>{{ row[4] }} / {{ row[5] }}</td>
+                    <td>{{ row[6] }}</td>
+                    <td>{{ row[7] }}</td>
+                    <td>
+                        <label class="toggle-switch">
+                            <input type="checkbox"
+                                   {% if row[-1] == 1 %}checked{% endif %}
+                                   onchange="toggleAutoFollowup('{{ row[0] }}', this)">
+                            <span class="toggle-slider"></span>
+                        </label>
+                        <div style="font-size:11px; color:#6b7280;">
+                            {% if row[-1] == 1 %}Static followups enabled{% else %}Awaiting your review{% endif %}
+                        </div>
+                    </td>
+                    <td>
+                        <div style="display:flex; flex-direction:column; gap:4px;">
+                            {% if row[11] %}
+                            <span style="font-size:13px; color:#374151;">
+                                <b>Reply From:</b><br>
+                                {{ row[11] }}
+                            </span>
+                            {% endif %}
+                            {% if row[12] == 1 %}
+                            <button onclick="viewReply('{{ row[0] }}','{{row[13]}}','{{row[14]}}')">🔔 View Reply</button>
+                            {% endif %}
+                        </div>
+                    </td>
+ 
+                    <td>
+                        <a href="/resume/{{row[0]}}">
+                            <button class="primary-btn">
+                                <i class="fa-solid fa-play"></i> Resume
+                            </button>
+                        </a>
+                        {% if row[11] == 1 %}
+                        <form method="POST" action="/ignore_reply" style="display:inline;">
+                            <input type="hidden" name="conversation_id" value="{{ row[12] }}">
+                            <button class="secondary-btn">Ignore</button>
+                        </form>
+                        {% endif %}
+                        <a href="/reset/{{row[0]}}">
+                            <button class="secondary-btn">Reset</button>
+                        </a>
+                    </td>
+ 
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+<!-- MANUAL PAUSED SECTION -->
+<div class="section-card">
+    <div class="section-header">
+        <h3>Manual Paused</h3>
+    </div>
+ 
+    <div class="table-container">
+        <table>
+            <thead>
+                <tr>
+                    <th>ID</th>
+                    <th>Subject</th>
+                    <th>Category</th>
+                    <th>Status</th>
+                    <th>Attempts</th>
+                    <th>Next Followup (IST)</th>
+                    <th>Last Updated (IST)</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for row in rows if row[3] == "MANUAL_PAUSED" %}
+                <tr>
+                    <td>
+                        <input
+                        type="checkbox"
+                        class="conversation-select"
+                        value="{{ row[13] }}"
+                        >
+                    </td>
+                    <td>{{ row[0] }}</td>
+                    <td>{{ row[1] }}</td>
+ 
+                    <td>{{ row[2] }}</td>
+                    <td><span class="badge paused">MANUAL_PAUSED</span></td>
+                    <td>{{ row[4] }} / {{ row[5] }}</td>
+                    <td>{{ row[6] }}</td>
+                    <td>{{ row[7] }}</td>
+ 
+                    <td>
+                        <a href="/resume/{{row[0]}}">
+                            <button class="primary-btn">
+                                <i class="fa-solid fa-play"></i> Resume
+                            </button>
+                        </a>
+                        <a href="/reset/{{row[0]}}">
+                            <button class="secondary-btn">Reset</button>
+                        </a>
+                    </td>
+ 
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+ 
+<!-- COMPLETED SECTION -->
+<div class="section-card">
+    <div class="section-header">
+        <h3>Completed Followups</h3>
+    </div>
+ 
+    <div class="table-container">
+        <table>
+            <thead>
+                <tr>
+                    <th>ID</th>
+                    <th>Subject</th>
+                    <th>Category</th>
+                    <th>Status</th>
+                    <th>Attempts</th>
+                    <th>Next Followup (IST)</th>
+                    <th>Last Updated (IST)</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for row in rows if row[3] == "COMPLETED" %}
+                <tr>
+                    <td>
+                        <input
+                        type="checkbox"
+                        class="conversation-select"
+                        value="{{ row[13] }}"
+                        >
+                    </td>
+                    <td>{{ row[0] }}</td>
+                    <td>{{ row[1] }}</td>
+                    <td>{{ row[2] }}</td>
+                    <td><span class="badge completed">COMPLETED</span></td>
+                    <td>{{ row[4] }} / {{ row[5] }}</td>
+                    <td>{{ row[6] }}</td>
+                    <td>{{ row[7] }}</td>
+                    <td>
+                        <button class="primary-btn" onclick="openRestartModal('{{ row[0] }}','{{ row[2] }}')" data-intro="Use this if you need to restart any followup" data-step="14"><i class="fa-solid fa-rotate-right"></i>Restart</button>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<div id="restartModal" class="modal">
+<div class="modal-content">
+ 
+<h3>Restart Followup</h3>
+ 
+<p>Select version to restart with:</p>
+ 
+<select id="restart_version">
+<option value="">Current Version</option>
+</select>
+ 
+<br><br>
+<button class="primary-btn" onclick="confirmRestart()">Restart</button>
+<button class="secondary-btn" onclick="closeRestartModal()">Cancel</button>
+ 
+</div>
+</div>
+
+<!-- WORKSPACE ASSIGNMENT MODAL -->
+<div id="workspaceAssignmentModal" class="modal">
+ 
+    <div class="modal-content workspace-modal">
+ 
+        <span
+            class="close"
+            onclick="closeWorkspaceAssignment()"
+        >
+            &times;
+        </span>
+ 
+        <h3>Assign Conversations to Workspace</h3>
+ 
+        <!-- STEP 1 -->
+        <div id="workspaceStep1">
+ 
+            <p id="selectedConversationCount">
+                Select conversations to assign.
+            </p>
+ 
+            <div id="workspaceConversationList"></div>
+ 
+            <br>
+ 
+            <button
+                class="secondary-btn"
+                onclick="closeWorkspaceAssignment()"
+            >
+                Cancel
+            </button>
+ 
+            <button
+                class="primary-btn"
+                onclick="workspaceNextStep()"
+            >
+                Next
+            </button>
+ 
+        </div>
+ 
+ 
+        <!-- STEP 2 -->
+        <div
+            id="workspaceStep2"
+            style="display:none;"
+        >
+ 
+            <h4>Select Workspace</h4>
+ 
+            <div id="workspaceList">
+                Loading workspaces...
+            </div>
+ 
+            <br>
+ 
+            <button
+                class="secondary-btn"
+                onclick="workspacePreviousStep()"
+            >
+                Back
+            </button>
+ 
+            <button
+                class="secondary-btn"
+                onclick="openCreateWorkspaceFromAssignment()"
+            >
+                <i class="fa-solid fa-plus"></i>
+                Create Workspace
+            </button>
+ 
+            <button
+                class="primary-btn"
+                onclick="assignSelectedConversations()"
+            >
+                Assign
+            </button>
+ 
+        </div>
+ 
+    </div>
+ 
+</div>
+
+<!-- MODAL -->
+<div id="categoryModal" class="modal">
+    <div class="modal-content">
+        <span class="close" onclick="closeModal()" style="float:right; cursor:pointer;">&times;</span>
+        <h3>Create Category</h3>
+        <form method="POST" action="/save_category" onsubmit="prepareDraftIds();showLoading('Creating Category...')">
+ 
+    <input type="text" name="category_name" placeholder="Category Name" required>
+ 
+    <!-- Followup Mode -->
+    <label style="margin-top:10px;">Follow-up Mode</label>
+    <select name="followup_mode" id="followup_mode" onchange="toggleFollowupMode()">
+        <option value="manual" selected>Manual Text</option>
+        <option value="template">Use Draft Templates</option>
+    </select>
+ 
+    <!-- Manual Text Section -->
+    <div id="manual_section">
+        <textarea name="followup_text" placeholder="Followup Text"></textarea>
+    </div>
+ 
+    <!-- Template Info Section -->
+     <div id="template_section" style="display:none; margin-top:10px;">
+    <p style="font-size:14px; color:gray;">
+        Select draft templates in sequence order.
+    </p>
+ 
+    <div id="draft_list" style="margin-top:10px;"></div>
+ 
+    <div style="margin-top:10px;">
+        <strong>Selected Sequence:</strong>
+        <ol id="selected_drafts"></ol>
+    </div>
+ 
+    <input type="hidden" name="selected_draft_ids" id="selected_draft_ids">
+</div>
+ 
+    <input type="number" name="max_attempts" placeholder="Max Attempts" required min="1">
+    <input type="number" name="interval_minutes" placeholder="Interval (minutes)" required min="1">
+ 
+    <button type="submit" class="primary-btn full-width">
+        Save Category
+    </button>
+</form>
+ 
+    </div>
+</div>
+<div id="replyModal" style="display:none; position:fixed; top:10%; left:30%; width:40%; background:white; padding:20px; border-radius:10px;max-height: 80vh;overflow-y: auto;">
+    
+    <h3>Client Reply</h3>
+ 
+    <p id="replySubject"></p>
+    <div id="replyBody"></div>
+    <hr>
+    <h4>AI Summary</h4>
+    <div id="aiSummary"></div>
+    <h4>Classification</h4>
+    <div id="aiClassification"></div>
+    <h4>Suggested Response</h4>
+    <textarea id="aiSuggestedResponse" rows="6" style="width:100%;"></textarea>
+    <br><br>
+    <input type="text" id="rephraseInstruction" placeholder="e.g. make it shorter, more formal..." style="width:70%;">
+    <button onclick="rephraseReply()">Rephrase</button>
+    <br><br>
+    <button onclick="approveReply()">Approve & Send</button>
+    <button onclick="declineReply()">Decline</button>
+    <br>
+ 
+    <button onclick="replyNow()">Reply</button>
+    <button onclick="ignoreNow()">Ignore</button>
+    <button onclick="closeReplyModal()">Close</button>
+ 
+</div>
+<script>
+let currentId = null;
+let currentMessageId=null;
+let currentConversationId=null;
+ 
+function viewReply(id,conversation_id,messageId) {
+    currentId = id;
+    currentMessageId=messageId;
+    currentConversationId=conversation_id;
+ 
+    fetch(`/get_reply/${id}`)
+    .then(res => res.json())
+    .then(data => {
+        console.log("Reply Data:",data);
+        document.getElementById("replySubject").innerText = data.subject || "No Subject";
+        document.getElementById("replyBody").innerHTML = data.body || "No Message";
+        document.getElementById("aiSummary").innerText =data.summary || "";
+        document.getElementById("aiClassification").innerText =data.classification || "";
+        document.getElementById("aiSuggestedResponse").value =data.suggested_response || "";
+ 
+        document.getElementById("replyModal").style.display = "block";
+    });
+}
+ 
+function closeReplyModal() {
+    document.getElementById("replyModal").style.display = "none";
+}
+ 
+function replyNow() {
+    if (!currentMessageId) {
+        alert("No message ID found");
+        return;
+    }
+ 
+    window.open(
+        `https://outlook.office.com/mail/inbox/id/${currentMessageId}`,
+        "_blank"
+    );
+}
+ 
+ 
+function ignoreNow() {
+    if (!currentConversationId) {
+        alert("No conversation selected");
+        return;
+    }
+ 
+    const formData = new FormData();
+    formData.append("conversation_id", currentConversationId);
+ 
+    fetch("/ignore_reply", {
+        method: "POST",
+        body: formData
+    })
+    .then(() => {
+        location.reload();   // reload dashboard
+    })
+    .catch(() => {
+        alert("Error ignoring reply");
+    });
+}
+function approveReply() {
+    if (!currentId) return;
+
+    const formData = new FormData();
+    // send the CURRENT textarea content, in case the analyst hand-edited it
+    formData.append("final_response", document.getElementById("aiSuggestedResponse").value);
+
+    fetch(`/approve_reply/${currentId}`, {
+        method: "POST",
+        body: formData
+    })
+    .then(() => location.reload())
+    .catch(() => alert("Error approving reply"));
+}
+
+function rephraseReply() {
+    if (!currentId) return;
+
+    const instruction = document.getElementById("rephraseInstruction").value;
+    if (!instruction) {
+        alert("Please type what change you want first");
+        return;
+    }
+
+    const formData = new FormData();
+    formData.append("instruction", instruction);
+
+    fetch(`/rephrase_reply/${currentId}`, {
+        method: "POST",
+        body: formData
+    })
+    .then(res => res.json())
+    .then(data => {
+        document.getElementById("aiSuggestedResponse").value = data.suggested_response;
+        document.getElementById("rephraseInstruction").value = "";
+    })
+    .catch(() => alert("Error rephrasing reply"));
+}
+
+function declineReply() {
+    if (!currentId) return;
+
+    fetch(`/decline_reply/${currentId}`, { method: "POST" })
+    .then(() => {
+        closeReplyModal();
+        location.reload();
+    })
+    .catch(() => alert("Error declining reply"));
+}
+ 
+</script>
+ 
+<script>
+function confirmRestart(){
+ 
+let version = document.getElementById("restart_version").value;
+ 
+let url = "/restart/" + restartId;
+ 
+if(version && version !== ""){
+url += "?version=" + version;
+}
+ 
+window.location.href = url;
+ 
+}
+ 
+function closeRestartModal(){
+document.getElementById("restartModal").style.display="none";
+document.getElementById("restartModal").style.display="none";
+}
+ 
+let restartId = null;
+ 
+function openRestartModal(id, category){
+ 
+restartId = id;
+
+category=category.split("(")[0].trim()
+fetch("/category_versions/" + category)
+.then(response => response.json())
+.then(data => {
+    console.log("API Response:",data);
+ 
+let select = document.getElementById("restart_version");
+ 
+select.innerHTML = '<option value="">'+category+'(Current)</option>';
+ 
+data.versions.forEach(v => {
+ 
+let opt = document.createElement("option");
+opt.value = v;
+opt.text = category + " v"+v;
+ 
+select.appendChild(opt);
+ 
+});
+ 
+document.getElementById("restartModal").style.display="flex";
+ 
+});
+ 
+}
+
+function escapeHtml(text){
+return text.replace(/[&<>"']/g,function(m){
+return ({
+"&":"&amp;",
+"<":"&lt;",
+">":"&gt;",
+'"':"&quot;",
+"'":"&#039;"
+})[m]
+})
+}
+
+let selectedDrafts = [];
+ 
+function toggleFollowupMode() {
+    var mode = document.getElementById("followup_mode").value;
+    var manualSection = document.getElementById("manual_section");
+    var templateSection = document.getElementById("template_section");
+ 
+    if (mode === "manual") {
+        manualSection.style.display = "block";
+        templateSection.style.display = "none";
+
+        selectedDrafts=[];
+        renderSelectedDrafts();
+    } else {
+        manualSection.style.display = "none";
+        templateSection.style.display = "block";
+        loadDrafts();
+    }
+}
+ 
+function loadDrafts() {
+    console.log("Fetching Drafts...");
+    fetch("/fetch_drafts")
+        .then(response => response.json())
+        .then(data => {
+            const drafts = data.value || [];
+            const container = document.getElementById("draft_list");
+            container.innerHTML = "";
+ 
+            drafts.forEach(draft => {
+                const div = document.createElement("div");
+                div.style.marginBottom = "5px";
+                div.innerHTML = `
+                    <button type="button" onclick="addDraft('${draft.id}', '${draft.subject || "No Subject"}')">
+                        Add
+                    </button>
+                    ${draft.subject || "No Subject"}
+                `;
+                container.appendChild(div);
+            });
+        });
+}
+ 
+function addDraft(id, subject) {
+ 
+if (selectedDrafts.find(d => d.id === id)) {
+  alert("Draft already added.");
+  return;
+}
+ 
+selectedDrafts.push({ id, subject });
+renderSelectedDrafts();
+}
+function prepareDraftIds() {
+    document.getElementById("selected_draft_ids").value =
+        selectedDrafts.map(d => d.id).join(",");
+}
+ 
+function renderSelectedDrafts() {
+    const list = document.getElementById("selected_drafts");
+    list.innerHTML = "";
+ 
+    selectedDrafts.forEach((draft, index) => {
+        const li = document.createElement("li");
+        li.innerHTML = `
+            ${draft.subject}
+            <button type="button" onclick="removeDraft(${index})">Remove</button>
+        `;
+        list.appendChild(li);
+    });
+ 
+    // store only ids in hidden input
+    document.getElementById("selected_draft_ids").value =
+        selectedDrafts.map(d => d.id).join(",");
+}
+ 
+function removeDraft(index) {
+    selectedDrafts.splice(index, 1);
+    renderSelectedDrafts();
+}
+</script>
+<script>
+function openModal() {
+ 
+selectedDrafts=[];
+renderSelectedDrafts();
+ 
+document.querySelector("input[name='category_name']").value="";
+document.querySelector("textarea[name='followup_text']").value="";
+document.querySelector("input[name='max_attempts']").value="";
+document.querySelector("input[name='interval_minutes']").value="";
+
+loadDrafts();
+ 
+document.getElementById("followup_mode").value="manual";
+toggleFollowupMode();
+ 
+document.getElementById("categoryModal").style.display="flex";
+}
+ 
+function closeModal() {
+    document.getElementById("categoryModal").style.display = "none";
+}
+ 
+window.onclick = function(event) {
+    let modal = document.getElementById("categoryModal");
+    if (event.target == modal) {
+        modal.style.display = "none";
+    }
+}
+
+/*setInterval(function(){
+location.reload();
+},30000);*/
+function toggleAutoFollowup(id, checkbox) {
+    fetch(`/toggle_auto_followup/${id}`, { method: "POST" })
+    .then(res => res.json())
+    .then(data => {
+        checkbox.checked = data.auto_followup_enabled === 1;
+    })
+    .catch(() => {
+        alert("Error toggling auto-followup");
+        checkbox.checked = !checkbox.checked; // revert visually on failure
+    });
+}
+
+function filterFollowups(){
+ 
+const search =
+document.getElementById("followupSearch")
+.value
+.toLowerCase();
+ 
+const status =
+document.getElementById("statusFilter")
+.value;
+ 
+const rows =
+document.querySelectorAll("tbody tr");
+ 
+rows.forEach(row=>{
+ 
+const text =
+row.innerText.toLowerCase();
+ 
+const rowStatus =
+row.innerText;
+ 
+const matchesSearch =
+text.includes(search);
+ 
+const matchesStatus =
+status === "" ||
+rowStatus.includes(status);
+ 
+row.style.display =
+(matchesSearch && matchesStatus)
+? ""
+: "none";
+ 
+});
+ 
+}
+window.addEventListener("load", () => {
+ 
+const box =
+document.getElementById("followupSearch");
+ 
+if(box && box.value.trim() !== ""){
+filterFollowups();
+}
+ 
+});
+
+let selectedWorkspaceConversations = [];
+ 
+function openWorkspaceAssignment() {
+ 
+    const checkboxes =
+        document.querySelectorAll(
+            ".conversation-select:checked"
+        );
+ 
+    if (checkboxes.length === 0) {
+        alert("Please select at least one conversation.");
+        return;
+    }
+ 
+    selectedWorkspaceConversations =
+        Array.from(checkboxes).map(
+            checkbox => checkbox.value
+        );
+ 
+    const list =
+        document.getElementById(
+            "workspaceConversationList"
+        );
+ 
+    list.innerHTML = "";
+ 
+    checkboxes.forEach(checkbox => {
+ 
+        const row = checkbox.closest("tr");
+ 
+        let subject = "Conversation";
+ 
+        if (row) {
+ 
+            const subjectElement =
+                row.querySelector(
+                    ".conversation-subject"
+                );
+ 
+            if (subjectElement) {
+                subject =
+                    subjectElement.innerText;
+            } else {
+                subject =
+                    row.innerText;
+            }
+        }
+ 
+        const div =
+            document.createElement("div");
+ 
+        div.style.padding = "10px";
+        div.style.borderBottom =
+            "1px solid #eee";
+ 
+        div.innerHTML = `
+            <strong>
+                ${escapeHtml(subject)}
+            </strong>
+        `;
+ 
+        list.appendChild(div);
+    });
+ 
+    document.getElementById(
+        "selectedConversationCount"
+    ).innerText =
+        `${checkboxes.length} conversation(s) selected`;
+ 
+    document.getElementById(
+        "workspaceStep1"
+    ).style.display = "block";
+ 
+    document.getElementById(
+        "workspaceStep2"
+    ).style.display = "none";
+ 
+    document.getElementById(
+        "workspaceAssignmentModal"
+    ).style.display = "flex";
+}
+ 
+async function workspaceNextStep() {
+ 
+    if (
+        selectedWorkspaceConversations.length === 0
+    ) {
+        alert("No conversations selected.");
+        return;
+    }
+ 
+    const workspaceList =
+        document.getElementById(
+            "workspaceList"
+        );
+ 
+    workspaceList.innerHTML =
+        "Loading workspaces...";
+ 
+    try {
+ 
+        const response =
+            await fetch("/api/workspaces");
+ 
+        const data =
+            await response.json();
+ 
+        if (!response.ok) {
+ 
+            throw new Error(
+                data.error ||
+                "Failed to load workspaces."
+            );
+        }
+ 
+        workspaceList.innerHTML = "";
+ 
+        if (!data || data.length === 0) {
+ 
+            workspaceList.innerHTML = `
+                <p>
+                    No workspaces exist yet.
+                </p>
+ 
+                <p>
+                    Click "Create Workspace"
+                    to create one.
+                </p>
+            `;
+ 
+        } else {
+ 
+            data.forEach(workspace => {
+ 
+                const div =
+                    document.createElement("div");
+ 
+                div.style.padding = "10px";
+ 
+                div.style.borderBottom =
+                    "1px solid #eee";
+ 
+                div.innerHTML = `
+                    <label>
+ 
+                        <input
+                            type="radio"
+                            name="selectedWorkspace"
+                            value="${workspace.id}"
+                        >
+ 
+                        <strong>
+                            ${escapeHtml(
+                                workspace.workspace_name
+                            )}
+                        </strong>
+ 
+                    </label>
+                `;
+ 
+                workspaceList.appendChild(div);
+            });
+        }
+ 
+        document.getElementById(
+            "workspaceStep1"
+        ).style.display = "none";
+ 
+        document.getElementById(
+            "workspaceStep2"
+        ).style.display = "block";
+ 
+    } catch (error) {
+ 
+        console.error(
+            "Workspace loading error:",
+            error
+        );
+ 
+        alert(
+            "Unable to load workspaces."
+        );
+    }
+}
+ 
+function workspacePreviousStep() {
+ 
+    document.getElementById(
+        "workspaceStep2"
+    ).style.display = "none";
+ 
+    document.getElementById(
+        "workspaceStep1"
+    ).style.display = "block";
+}
+ 
+ 
+function closeWorkspaceAssignment() {
+ 
+    document.getElementById(
+        "workspaceAssignmentModal"
+    ).style.display = "none";
+ 
+    selectedWorkspaceConversations = [];
+}
+ 
+ 
+function openCreateWorkspaceFromAssignment() {
+ 
+    closeWorkspaceAssignment();
+ 
+    window.location.href = "/workspaces";
+}
+async function assignSelectedConversations() {
+ 
+    if (selectedWorkspaceConversations.length === 0) {
+        alert("No conversations selected.");
+        return;
+    }
+ 
+    const selectedWorkspace =
+        document.querySelector(
+            'input[name="selectedWorkspace"]:checked'
+        );
+ 
+    if (!selectedWorkspace) {
+        alert("Please select a workspace.");
+        return;
+    }
+ 
+    const workspaceId = selectedWorkspace.value;
+ 
+    console.log("Assigning conversations:");
+    console.log("Workspace ID:", workspaceId);
+    console.log(
+        "Conversation IDs:",
+        selectedWorkspaceConversations
+    );
+ 
+    try {
+ 
+        const response = await fetch(
+            "/workspaces/assign",
+            {
+                method: "POST",
+ 
+                headers: {
+                    "Content-Type": "application/json"
+                },
+ 
+                body: JSON.stringify({
+                    workspace_id: workspaceId,
+                    conversation_ids:
+                        selectedWorkspaceConversations
+                })
+            }
+        );
+ 
+        const data = await response.json();
+ 
+        console.log(
+            "Assignment response:",
+            data
+        );
+ 
+        if (!response.ok || data.error) {
+            throw new Error(
+                data.error ||
+                "Failed to assign conversations."
+            );
+        }
+ 
+        alert(
+            `${data.assigned.length} conversation(s) assigned successfully.`
+        );
+ 
+        closeWorkspaceAssignment();
+ 
+        location.reload();
+ 
+    } catch (error) {
+ 
+        console.error(
+            "Workspace assignment error:",
+            error
+        );
+ 
+        alert(
+            "Failed to assign conversations: " +
+            error.message
+        );
+    }
+}
+ 
+
+</script>
+ 
+{% endblock %}
+ 
