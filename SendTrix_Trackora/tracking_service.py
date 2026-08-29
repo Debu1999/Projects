@@ -146,3 +146,55 @@ def pause_tracking(conversation_id):
  
     conn.commit()
     conn.close()
+
+def resume_tracking(conversation_id):
+    user_id = get_current_user_id()
+    conn = get_connection()
+    cursor = conn.cursor()
+ 
+    now = datetime.now(timezone.utc)
+ 
+    # Get category + version
+    cursor.execute("""
+    SELECT category_name, category_version
+    FROM followups
+    WHERE conversation_id = %s AND user_id = %s
+    """, (conversation_id, user_id))
+    
+    row = cursor.fetchone()
+    print("DB status before update:",row)
+    if not row:
+        conn.close()
+        return
+ 
+    category_name, version = row
+ 
+    settings = get_settings(category_name, version)
+    if not settings:
+        conn.close()
+        return
+ 
+    _, _, interval_minutes, _ = settings
+ 
+    next_time = now + timedelta(minutes=interval_minutes)
+ 
+    cursor.execute("""
+    UPDATE followups
+    SET status = 'ACTIVE',
+        next_followup_at = %s,
+        updated_at = %s
+    WHERE conversation_id = %s AND user_id = %s
+    AND status = 'CLIENT_REPLY'
+    """, (
+        next_time.isoformat(),
+        now.isoformat(),
+        conversation_id,
+        user_id
+    ))
+    print("Rows Updated:",cursor.rowcount)
+    print("Conversation_ID:",conversation_id)
+ 
+    conn.commit()
+    conn.close()
+ 
+    log_activity(conversation_id, "Resumed Automatically")
