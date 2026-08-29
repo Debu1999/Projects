@@ -174,3 +174,41 @@ def add_conversation_to_workspace(workspace_id, conversation_id):
     conn.close()
  
     return True
+def move_conversation_to_workspace(
+    conversation_id,
+    new_workspace_id
+):
+    conn = get_connection()
+    cursor = conn.cursor()
+ 
+    now = datetime.now().isoformat()
+ 
+    # Verify target workspace
+    cursor.execute("""
+        SELECT id
+        FROM workspaces
+        WHERE id = %s
+        AND status = 'ACTIVE'
+    """, (new_workspace_id,))
+ 
+    if not cursor.fetchone():
+        conn.close()
+        raise Exception("Target workspace not found.")
+ 
+    cursor.execute("""
+        UPDATE workspace_conversations
+        SET workspace_id = %s,
+            assigned_at = %s
+        WHERE conversation_id = %s
+    """, (
+        new_workspace_id,
+        now,
+        conversation_id
+    ))
+ 
+    updated = cursor.rowcount > 0
+ 
+    conn.commit()
+    conn.close()
+ 
+    return updated
