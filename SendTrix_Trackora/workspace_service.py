@@ -101,3 +101,26 @@ def rename_workspace(workspace_id, workspace_name, description=None):
     conn.close()
  
     return updated
+def archive_workspace(workspace_id):
+    conn = get_connection()
+    cursor = conn.cursor()
+ 
+    now = datetime.now().isoformat()
+ 
+    cursor.execute("""
+        UPDATE workspaces
+        SET status = 'ARCHIVED',
+            updated_at = %s
+        WHERE id = %s
+    """, (
+        now,
+        workspace_id
+    ))
+ 
+    conn.commit()
+ 
+    archived = cursor.rowcount > 0
+ 
+    conn.close()
+ 
+    return archived
