@@ -412,3 +412,31 @@ def run_comparison(master_upload_id, target_upload_id):
     update_comparison_summary(comparison_id, added, modified, missing)
  
     return comparison_id
+def get_comparison_files():
+ 
+    conn = get_connection()
+    cursor = conn.cursor()
+ 
+    cursor.execute("""
+    SELECT
+        id,
+        created_at
+    FROM comparison_logs
+    ORDER BY id DESC
+    """)
+ 
+    rows = cursor.fetchall()
+ 
+    conn.close()
+ 
+    result = []
+ 
+    for row in rows:
+ 
+        result.append({
+            "id": row[0],
+            "created_at": row[1],
+            "status": "PENDING REVIEW"
+        })
+ 
+    return result
