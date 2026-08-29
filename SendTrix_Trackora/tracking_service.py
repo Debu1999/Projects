@@ -593,3 +593,20 @@ def ignore_reply(conversation_id):
  
     conn.commit()
     conn.close()
+
+def get_unread_replies():
+    user_id = get_current_user_id()
+    conn = get_connection()
+    cursor = conn.cursor()
+ 
+    cursor.execute("""
+    SELECT conversation_id, last_reply_subject, last_reply_body
+    FROM followups
+    WHERE is_unread_reply = 1
+      AND is_ignored_reply = 0
+      AND user_id = %s
+    """, (user_id,))
+ 
+    rows = cursor.fetchall()
+    conn.close()
+    return rows
