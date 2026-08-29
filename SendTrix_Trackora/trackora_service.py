@@ -257,3 +257,28 @@ def create_comparison(cursor,master_upload_id, target_upload_id,master_count,tar
     """, (master_upload_id,target_upload_id, now,master_count,target_count))
  
     return cursor.fetchone()[0]
+def update_comparison_summary(
+    comparison_id,
+    added_count,
+    modified_count,
+    missing_count
+):
+    conn = get_connection()
+    cursor = conn.cursor()
+ 
+    cursor.execute("""
+        UPDATE comparison_logs
+        SET
+            added_count = %s,
+            modified_count = %s,
+            missing_count = %s
+        WHERE id = %s
+    """, (
+        added_count,
+        modified_count,
+        missing_count,
+        comparison_id
+    ))
+ 
+    conn.commit()
+    conn.close()
