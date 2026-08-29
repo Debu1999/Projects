@@ -292,3 +292,18 @@ def get_workspace_rows(workspace_id):
     )
  
     return filtered_rows
+def get_workspace_conversation_ids(workspace_id):
+    conn = get_connection()
+    cursor = conn.cursor()
+ 
+    cursor.execute("""
+        SELECT conversation_id
+        FROM workspace_conversations
+        WHERE workspace_id = %s
+    """, (workspace_id,))
+ 
+    rows = cursor.fetchall()
+    conn.close()
+ 
+    return [row[0] for row in rows]
+ 
