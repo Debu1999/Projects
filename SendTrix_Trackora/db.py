@@ -543,5 +543,11 @@ def get_user_by_microsoft_id(microsoft_user_id):
  
     finally:
         conn.close()
+        
+def get_current_user_id():
+    user_id = session.get("user_id")
  
+    if not user_id:
+        raise Exception("User not authenticated")
  
+    return user_id
