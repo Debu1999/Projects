@@ -468,3 +468,31 @@ def ignore_change_db(change_id):
  
     conn.commit()
     conn.close()
+
+def apply_all_changes_db(comparison_id):
+ 
+    conn = get_connection()
+    cursor = conn.cursor()
+ 
+    cursor.execute("""
+    UPDATE comparison_changes
+    SET approval_status = 'APPROVED'
+    WHERE comparison_id = %s
+    """, (comparison_id,))
+ 
+    conn.commit()
+    conn.close()
+ 
+def ignore_all_changes_db(comparison_id):
+ 
+    conn = get_connection()
+    cursor = conn.cursor()
+ 
+    cursor.execute("""
+    UPDATE comparison_changes
+    SET approval_status = 'IGNORED'
+    WHERE comparison_id = %s
+    """, (comparison_id,))
+ 
+    conn.commit()
+    conn.close()
