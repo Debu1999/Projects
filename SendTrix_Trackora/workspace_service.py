@@ -124,3 +124,53 @@ def archive_workspace(workspace_id):
     conn.close()
  
     return archived
+def add_conversation_to_workspace(workspace_id, conversation_id):
+    conn = get_connection()
+    cursor = conn.cursor()
+ 
+    now = datetime.now().isoformat()
+ 
+    # Verify workspace exists
+    cursor.execute("""
+        SELECT id
+        FROM workspaces
+        WHERE id = %s
+        AND status = 'ACTIVE'
+    """, (workspace_id,))
+ 
+    if not cursor.fetchone():
+        conn.close()
+        raise Exception("Workspace not found.")
+ 
+    # Conversation can belong to only ONE workspace
+    cursor.execute("""
+        SELECT workspace_id
+        FROM workspace_conversations
+        WHERE conversation_id = %s
+    """, (conversation_id,))
+ 
+    existing = cursor.fetchone()
+ 
+    if existing:
+        conn.close()
+        raise Exception(
+            "Conversation already belongs to a workspace."
+        )
+ 
+    cursor.execute("""
+        INSERT INTO workspace_conversations (
+            workspace_id,
+            conversation_id,
+            assigned_at
+        )
+        VALUES (%s, %s, %s)
+    """, (
+        workspace_id,
+        conversation_id,
+        now
+    ))
+ 
+    conn.commit()
+    conn.close()
+ 
+    return True
