@@ -543,7 +543,7 @@ def get_user_by_microsoft_id(microsoft_user_id):
  
     finally:
         conn.close()
-        
+
 def get_current_user_id():
     user_id = session.get("user_id")
  
@@ -551,3 +551,45 @@ def get_current_user_id():
         raise Exception("User not authenticated")
  
     return user_id
+def convert_to_ist(utc_value):
+    if not utc_value:
+        return ""
+ 
+    # PostgreSQL TIMESTAMPTZ usually returns a datetime object
+    if isinstance(utc_value, datetime):
+        utc_dt = utc_value
+ 
+    # Handle ISO timestamp strings
+    elif isinstance(utc_value, str):
+        try:
+            # Handle timestamps ending in Z
+            utc_dt = datetime.fromisoformat(
+                utc_value.replace("Z", "+00:00")
+            )
+        except ValueError:
+            return utc_value
+ 
+    else:
+        return str(utc_value)
+ 
+    # If timezone is missing, assume UTC
+    if utc_dt.tzinfo is None:
+        utc_dt = utc_dt.replace(tzinfo=timezone.utc)
+ 
+    # Convert to IST
+    ist_dt = utc_dt.astimezone(
+        ZoneInfo("Asia/Kolkata")
+    )
+ 
+    return ist_dt.strftime(
+        "%d %b %Y, %I:%M %p IST"
+    )
+def to_ist(utc_string):
+    if not utc_string:
+        return ""
+    try:
+        utc_time = datetime.fromisoformat(utc_string)
+        ist_time = utc_time + timedelta(hours=5, minutes=30)
+        return ist_time.strftime("%d %b %Y, %I:%M %p IST")
+    except:
+        return utc_string
