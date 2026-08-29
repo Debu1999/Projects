@@ -370,3 +370,85 @@ def get_manual_paused_followups():
     conn.close()
  
     return rows
+
+def insert_or_resume_followup(message, category_name,recipients_str):
+    user_id = get_current_user_id()
+    conn = get_connection()
+    cursor = conn.cursor()
+ 
+    now = datetime.now(timezone.utc)
+
+    version=get_latest_category_version(category_name)
+ 
+    settings = get_settings(category_name,version)
+    if not settings:
+        conn.close()
+        return "no_settings"
+ 
+    _, max_attempts, interval_minutes,_ = settings
+    next_time = now + timedelta(minutes=interval_minutes)
+ 
+    subject = message.get("subject", "")
+ 
+    cursor.execute("""
+        SELECT id, status FROM followups 
+        WHERE conversation_id = %s AND user_id = %s
+    """, (message["conversationId"], user_id))
+ 
+    existing = cursor.fetchone()
+ 
+    # ===============================
+    # If conversation already exists
+    # ===============================
+    if existing:
+        row_id, status = existing
+ 
+        # Do NOT override any existing status
+        # User controls ACTIVE / PAUSED / COMPLETED
+        conn.close()
+        return "skipped_existing"
+
+    #to_list = message.get("toRecipients", [])
+    #cc_list = message.get("ccRecipients", [])
+    
+ 
+    # ===============================
+    # If new conversation → insert
+    # ===============================
+    if not recipients_str:
+        recipients_str=""
+    cursor.execute("""
+        INSERT INTO followups (
+            user_id,
+            message_id,
+            conversation_id,
+            category_name,
+            category_version,
+            subject,
+            status,
+            attempt_count,
+            next_followup_at,
+            started_at,
+            updated_at,
+            original_recipients
+        ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+    """, (
+        user_id,
+        message["id"],
+        message["conversationId"],
+        category_name,
+        version,
+        subject,
+        "ACTIVE",
+        0,
+        next_time,
+        now,
+        now,
+        recipients_str
+    ))
+ 
+    conn.commit()
+    conn.close()
+    log_activity(message["conversationId"],"Inserted via Sync")
+ 
+    return "inserted"
