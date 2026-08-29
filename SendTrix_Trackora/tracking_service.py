@@ -258,3 +258,23 @@ def get_status(conversation_id):
     conn.close()
  
     return row[0] if row else None
+def get_due_followups():
+    user_id = get_current_user_id()
+    conn = get_connection()
+    cursor = conn.cursor()
+ 
+    now = datetime.now(timezone.utc)
+ 
+    cursor.execute("""
+        SELECT message_id, conversation_id, category_name,category_version, attempt_count,last_followup_sent_at,original_recipients
+        FROM followups
+        WHERE status = 'ACTIVE'
+        AND next_followup_at <= %s
+        AND auto_followup_enabled=1
+        AND user_id = %s
+    """, (now, user_id))
+ 
+    rows = cursor.fetchall()
+    conn.close()
+ 
+    return rows
