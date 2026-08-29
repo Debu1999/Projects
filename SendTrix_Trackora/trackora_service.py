@@ -248,4 +248,12 @@ def get_snapshot_by_upload(upload_id):
     len(result))
  
     return result
+def create_comparison(cursor,master_upload_id, target_upload_id,master_count,target_count):
+    now = datetime.now(timezone.utc).isoformat()
  
+    cursor.execute("""
+        INSERT INTO comparison_logs (from_upload_id,to_upload_id,created_at,master_count,target_count)
+        VALUES (%s, %s, %s, %s, %s)
+    """, (master_upload_id,target_upload_id, now,master_count,target_count))
+ 
+    return cursor.fetchone()[0]
