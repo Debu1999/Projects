@@ -72,3 +72,110 @@ def save_template_folders_settings(primary_folder_id, secondary_folder_id):
  
     finally:
         conn.close()
+ 
+def get_settings(category_name,version):
+    user_id=get_current_user_id()
+    conn = get_connection()
+    cursor = conn.cursor()
+ 
+    cursor.execute("""
+        SELECT followup_text, max_attempts, interval_minutes,followup_mode
+        FROM settings
+        WHERE user_id=%s AND category_name = %s AND version=%s
+    """, (user_id, category_name, version))
+ 
+    row = cursor.fetchone()
+    cursor.close()
+    conn.close()
+    return row
+def save_settings(category_name, followup_text, max_attempts, interval_minutes,
+                  followup_mode="manual", selected_draft_ids=None):
+    from graph_client import get_draft_subject
+ 
+    user_id = get_current_user_id()
+    conn = get_connection()
+    cursor = conn.cursor()
+ 
+    now = datetime.now(timezone.utc).isoformat()
+ 
+    # ------------------------------------
+    # Determine new version number
+    # ------------------------------------
+    latest_version = get_latest_category_version(category_name)
+    new_version = latest_version + 1
+ 
+    # ------------------------------------
+    # Insert new settings version
+    # ------------------------------------
+    cursor.execute("""
+        INSERT INTO settings
+        (user_id, category_name, version, followup_text, max_attempts,
+         interval_minutes, followup_mode, updated_at)
+        VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
+    """, (
+        user_id,
+        category_name,
+        new_version,
+        followup_text,
+        max_attempts,
+        interval_minutes,
+        followup_mode,
+        now
+    ))
+ 
+    # ------------------------------------
+    # TEMPLATE HANDLING (snapshot)
+    # ------------------------------------
+    if followup_mode == "template" and selected_draft_ids:
+ 
+        import re
+ 
+        draft_list = [
+            d.strip() for d in re.split(r"[;,|]", selected_draft_ids) if d.strip()
+        ]
+ 
+        print("Saving templates for category:", category_name, "version:", new_version,"user_id:", user_id)
+ 
+        # Single template
+        if len(draft_list) == 1:
+ 
+            subject = get_draft_subject(draft_list[0]) or "No Subject"
+ 
+            cursor.execute("""
+                INSERT INTO category_templates
+                (user_id, category_name, version, order_number, draft_id, draft_subject)
+                VALUES (%s, %s, %s, %s, %s, %s)
+            """, (
+                user_id,
+                category_name,
+                new_version,
+                1,
+                draft_list[0],
+                subject
+            ))
+ 
+        # Multiple templates
+        else:
+ 
+            for index, draft_id in enumerate(draft_list, start=1):
+ 
+                subject = get_draft_subject(draft_id) or "No Subject"
+ 
+                cursor.execute("""
+                    INSERT INTO category_templates
+                    (user_id, category_name, version, order_number, draft_id, draft_subject)
+                    VALUES (%s, %s, %s, %s, %s, %s)
+                """, (
+                    user_id,
+                    category_name,
+                    new_version,
+                    index,
+                    draft_id,
+                    subject
+                ))
+ 
+    conn.commit()
+    cursor.close()
+    conn.close()
+ 
+    return new_version
