@@ -254,4 +254,129 @@ def clone_category_version(category_name, source_version):
     conn.close()
  
     return new_version
+def get_all_categories():
+    user_id = get_current_user_id()
  
+    conn = get_connection()
+    cursor = conn.cursor()
+ 
+    cursor.execute("""
+    SELECT category_name, version
+    FROM settings
+    ORDER BY category_name, version DESC
+    """)
+ 
+    rows = cursor.fetchall()
+    conn.close()
+ 
+    categories = {}
+ 
+    for name, version in rows:
+        if name not in categories:
+            categories[name] = []
+ 
+        categories[name].append(version)
+ 
+    result = []
+ 
+    for name, versions in categories.items():
+        result.append({
+            "name": name,
+            "versions": versions
+        })
+ 
+    return result
+
+
+def get_category_details(category_name,version):
+    user_id = get_current_user_id()
+ 
+    conn = get_connection()
+    cursor = conn.cursor()
+ 
+    # SETTINGS
+    cursor.execute("""
+    SELECT version,followup_text, max_attempts, interval_minutes,
+    followup_mode, updated_at
+    FROM settings
+    WHERE user_id = %s
+    AND category_name = %s
+    AND version=%s
+    """, (user_id, category_name, version))
+ 
+    settings = cursor.fetchone()
+ 
+    if not settings:
+        conn.close()
+        return None
+ 
+    version,followup_text, max_attempts, interval_minutes, mode, updated_at = settings
+ 
+ 
+    # STATUS COUNTS
+    cursor.execute("""
+    SELECT
+        COUNT(*),
+        SUM(CASE WHEN status='ACTIVE' THEN 1 ELSE 0 END),
+        SUM(CASE WHEN status='CLIENT_REPLY' THEN 1 ELSE 0 END),
+        SUM(CASE WHEN status='MANUAL_PAUSED' THEN 1 ELSE 0 END),
+        SUM(CASE WHEN status='COMPLETED' THEN 1 ELSE 0 END)
+    FROM followups
+    WHERE user_id = %s AND category_name = %s
+    """, (user_id, category_name))
+ 
+    stats = cursor.fetchone()
+    total, active, client_paused,manual_paused, completed = stats or (0,0,0,0,0)
+ 
+ 
+    # TEMPLATES
+    cursor.execute("""
+    SELECT order_number,draft_subject
+    FROM category_templates
+    WHERE user_id = %s 
+    AND category_name = %s
+    AND version=%s
+    ORDER BY order_number
+    """, (user_id, category_name, version))
+ 
+    template_rows = cursor.fetchall()
+    cursor.close()
+    conn.close()
+    templates=[
+        {
+            "order":row[0],
+            "subject":row[1]
+        }
+        for row in template_rows
+    ]
+    # MODE LABEL
+    if mode == "manual":
+        mode_label = "Manual Text"
+    elif len(templates) == 1:
+        mode_label = "Single Template"
+    elif len(templates) > 1:
+        mode_label = f"Template Sequence ({len(templates)})"
+    else:
+        mode_label = "Template"
+ 
+ 
+    updated = convert_to_ist(updated_at) if updated_at else None
+ 
+ 
+    return {
+        "category": category_name,
+        "version":version,
+        "interval_minutes": interval_minutes,
+        "max_attempts": max_attempts,
+        "mode": mode_label,
+        "followup_text": followup_text,
+        "templates": templates,
+        "updated_at": updated,
+        "stats": {
+            "total": total or 0,
+            "active": active or 0,
+            "client_paused": client_paused or 0,
+            "manual_paused":manual_paused or 0,
+            "completed": completed or 0
+        }
+    }
