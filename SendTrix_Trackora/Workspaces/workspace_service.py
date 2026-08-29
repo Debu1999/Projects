@@ -1,6 +1,6 @@
-from db import get_connection,get_current_user_id
+from db import get_connection
 from datetime import datetime
-from sendtrix_service import get_rows
+from SendTrix_Trackora.Tracking.sendtrix_service import get_rows
 def create_workspace(workspace_name, description=""):
     conn = get_connection()
     cursor = conn.cursor()

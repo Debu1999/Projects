@@ -3,12 +3,11 @@ import time
 import os
 import base64
  
-from draft_service import get_draft_by_id
 from template_engine import render_consolidated_template, render_dynamic, extract_placeholders
-from auth import get_access_token
-from graph_client import get_graph_token
+from graph_client import get_graph_token,get_draft_by_id
 from validators import is_valid_email, clean_email_list
-from db import insert_or_resume_followup
+from Tracking.tracking_service import insert_or_resume_followup
+from db import get_current_user_id,get_connection
 
  
 BASE_URL = "https://graph.microsoft.com/v1.0"
@@ -904,4 +903,19 @@ def send_consolidated_from_draft(
                 "Maximum retry attempts exceeded."
         }]
     }
+def get_bulk_runs():
+    user_id = get_current_user_id()
+    conn = get_connection()
+    cursor = conn.cursor()
+    cursor.execute("""
+    SELECT
+    conversation_id,subject,category_name,status,started_at FROM followups WHERE user_id = %s ORDER BY started_at DESC""", (user_id,))
+    rows = cursor.fetchall()
+    result = []
+
+    for r in rows:
+        result.append({
+            "id": r[0],"subject": r[1],"category": r[2],"status": r[3],"recipient_count": 1,"created_at": r[4]})
+    conn.close()
+    return result
  

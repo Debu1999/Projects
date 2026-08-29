@@ -1,3 +1,30 @@
+from app import app
+import io,os
+import pandas as pd
+from datetime import datetime, timedelta, timezone
+from flask import render_template,request,jsonify,send_file
+import requests
+from trackora_nl_query import natural_language_to_sql,run_safe_query,is_safe_select
+from db import get_connection
+from Categories.category_service import get_template_folders
+from Bulk_Email.draft_bulk_sender import send_bulk_from_draft
+from graph_client import get_followup_drafts
+from Bulk_Email.draft_bulk_sender import send_consolidated_from_draft
+from trackora_service import (
+    get_recommended_action,
+    get_send_mail_flag,
+    run_comparison,
+    run_compliance_engine,
+    insert_raw_snapshot_bulk,
+    insert_snapshot_bulk,
+    ignore_all_changes_db,
+    apply_all_changes_db,
+    initialize_or_carry_analysis,
+    carry_forward_mail_config,
+    approve_change,
+    ignore_change_db,
+    get_comparison_files
+)
 @app.route("/nl_query", methods=["POST"])
 def nl_query():
     print("=== NL QUERY ROUTE HIT ===", flush=True)
@@ -19,10 +46,6 @@ def nl_query():
         "rows": query_result["rows"],
         "error": query_result["error"],
     }
-import pandas as pd
-import io
-from flask import send_file
-from trackora_nl_query import is_safe_select
 
 @app.route("/nl_query/download", methods=["POST"])
 def nl_query_download():
@@ -572,7 +595,6 @@ def download_master_data():
     from db import get_connection
     import pandas as pd
     from io import BytesIO
-    from datetime import datetime
     from flask import Response
     from trackora_report_narrative import compute_compliance_summary, generate_summary_narrative
 
@@ -664,7 +686,6 @@ def download_master_data():
         mimetype="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
         headers={"Content-Disposition": f"attachment; filename={filename}"}
     )
-from datetime import datetime, timezone, timedelta
 
 @app.route("/applications/save-mail-config", methods=["POST"])
 def save_config():
@@ -985,7 +1006,6 @@ def get_master_drafts():
 @app.route("/applications/set-master/<int:upload_id>", methods=["POST"])
 def set_master(upload_id):
     from db import get_connection
-    from datetime import datetime, timezone
  
     conn = get_connection()
     cursor = conn.cursor()
@@ -1063,10 +1083,8 @@ def compare_upload(upload_id):
     )
 @app.route("/applications/comparison-files")
 def comparison_files():
- 
-    from db import get_comparison_files
- 
     return jsonify(get_comparison_files())
+
 @app.route("/applications/comparison-data/<int:comparison_id>", methods=["GET"])
 def get_comparison_data(comparison_id):
  
@@ -1194,8 +1212,6 @@ def get_asn_changes(comparison_id, asn):
 @app.route("/applications/apply-change/<int:change_id>", methods=["POST"])
 def apply_change(change_id):
  
-    from db import approve_change
- 
     approve_change(change_id)
  
     return jsonify({
@@ -1204,8 +1220,6 @@ def apply_change(change_id):
  
 @app.route("/applications/ignore-change/<int:change_id>", methods=["POST"])
 def ignore_change(change_id):
- 
-    from db import ignore_change_db
  
     ignore_change_db(change_id)
  
@@ -1218,8 +1232,6 @@ def ignore_change(change_id):
 )
 def apply_all_changes(comparison_id):
  
-    from db import apply_all_changes_db
- 
     apply_all_changes_db(comparison_id)
  
     return jsonify({
@@ -1231,8 +1243,6 @@ def apply_all_changes(comparison_id):
     methods=["POST"]
 )
 def ignore_all_changes(comparison_id):
- 
-    from db import ignore_all_changes_db
  
     ignore_all_changes_db(comparison_id)
  
@@ -1247,7 +1257,6 @@ def download_final_excel(comparison_id):
         generate_excel_from_upload
     )
  
-    from db import get_connection
  
     conn = get_connection()
     cursor = conn.cursor()

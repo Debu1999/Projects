@@ -1,5 +1,5 @@
-from db import get_connection,get_current_user_id
-from datetime import datetime,timedelta,timezone
+from db import get_connection,get_current_user_id,convert_to_ist
+from datetime import datetime,timezone
 
 def get_template_for_attempt(category_name,version,attempt_number):
     conn = get_connection()

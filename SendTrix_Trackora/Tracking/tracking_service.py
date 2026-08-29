@@ -1,7 +1,7 @@
 from db import get_connection,get_current_user_id
 from datetime import datetime,timedelta,timezone
 import json
-from category_service import get_settings,get_latest_category_version
+from SendTrix_Trackora.Categories.category_service import get_settings,get_latest_category_version
 def save_ai_draft(conversation_id, draft_body, reasoning, classification):
     user_id = get_current_user_id()
     conn = get_connection()
@@ -629,18 +629,3 @@ def get_reply_flags(conversation_id):
     conn.close()
  
     return row[0] if row else 0
-def get_bulk_runs():
-    user_id = get_current_user_id()
-    conn = get_connection()
-    cursor = conn.cursor()
-    cursor.execute("""
-    SELECT
-    conversation_id,subject,category_name,status,started_at FROM followups WHERE user_id = %s ORDER BY started_at DESC""", (user_id,))
-    rows = cursor.fetchall()
-    result = []
-
-    for r in rows:
-        result.append({
-            "id": r[0],"subject": r[1],"category": r[2],"status": r[3],"recipient_count": 1,"created_at": r[4]})
-    conn.close()
-    return result

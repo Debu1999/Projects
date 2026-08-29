@@ -62,6 +62,60 @@ def upsert_application(app_data):
  
     conn.commit()
     conn.close()
+def get_recommended_action(
+    internal_status,
+    vendor_status
+):
+ 
+    if (internal_status == "Compliant" and vendor_status=="Patch Available"):
+        return "NEXT_FREQUENCY_REVIEW"
+ 
+    if (internal_status == "Pending Validation" and vendor_status=="No TimeStamp present"):
+        return "REQUEST_FOR_EVIDENCE_WITH_TIMESTAMP"
+ 
+    if (
+        internal_status == "Non-compliant"
+        and vendor_status == "Not Assessed"
+    ):
+        return "SEND_EVIDENCE_REQUEST"
+ 
+    if (
+        internal_status == "Exception Approved"
+        and vendor_status == "No Vendor Update"
+    ):
+        return "REVIEW_IN_90_DAYS"
+ 
+    if (
+        internal_status == "Exception Approved"
+        and vendor_status == "Funding Pending"
+    ):
+        return "WAIT_FOR_DUE_DATE"
+ 
+    if (
+        internal_status == "Exception Approved"
+        and vendor_status == "Vendor Dependency"
+    ):
+        return "WAIT_FOR_VENDOR_ETA"
+ 
+    if (
+        internal_status == "Exception Approved"
+        and vendor_status == "Upgrade Planned"
+    ):
+        return "TRACK_UPGRADE"
+ 
+    return "MANUAL_REVIEW"
+
+
+def get_send_mail_flag(recommended_action):
+ 
+    if recommended_action in [
+        "SEND_EVIDENCE_REQUEST",
+        "REQUEST_TIMESTAMP_EVIDENCE",
+        "REQUEST_VENDOR_ETA"
+    ]:
+        return 1
+ 
+    return 0
 def insert_snapshot_bulk(cursor, upload_id, row):
  
     now = datetime.now(timezone.utc).isoformat()

@@ -1,5 +1,6 @@
 from graph_client import get_sent_with_category
-from db import insert_or_resume_followup, get_connection
+from db import get_connection
+from Tracking.tracking_service import insert_or_resume_followup
  
  
 def get_all_categories():

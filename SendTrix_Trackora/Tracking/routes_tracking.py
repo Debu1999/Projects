@@ -1,3 +1,24 @@
+from app import app
+from Tracking.sendtrix_service import get_rows,get_dashboard_counts
+from Tracking.tracking_service import (
+    get_unread_replies,
+    log_activity,
+    get_all_activity,
+    get_ai_draft,
+    update_ai_draft_status,
+    restart_followup,
+    get_activity,
+    save_ai_draft,
+    ignore_reply
+)
+from graph_client import get_graph_token,send_followup_reply_manual
+from agent_service import clean_email_body,analyze_reply,rephrase_draft_body
+from process import process,refresh_conversations
+from sync_categories import sync
+from db import get_connection
+from datetime import datetime,timezone
+from flask import render_template, redirect, url_for, flash, request
+
 @app.route("/")
 def dashboard():
     search=request.args.get("search","")
@@ -33,7 +54,7 @@ def run_process():
 @app.route("/sync")
 def run_sync():
     sync()
-    debug_followups()
+    #debug_followups()
     flash("Mailbox sync completed successfully.")
     return redirect(url_for("dashboard"))
 @app.route("/refresh")

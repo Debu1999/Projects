@@ -1,3 +1,18 @@
+from app import app
+from Categories.category_service import (
+    get_template_folders,
+    get_all_categories,
+    )
+from Bulk_Email.draft_bulk_sender import get_bulk_runs,send_bulk_from_draft
+from flask import render_template, redirect, url_for, flash, request
+import os,io,json
+from graph_client import(
+    get_draft_by_id,
+    get_followup_drafts
+)
+from template_engine import extract_placeholders,render_dynamic
+from openpyxl import load_workbook
+
 @app.route("/bulk_email")
 def bulk_email():
     folders=get_template_folders()

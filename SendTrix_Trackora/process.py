@@ -1,22 +1,21 @@
-from db import (
+from db import init_db
+from agent_service import clean_email_body, analyze_reply
+from Tracking.tracking_service import (
     get_due_followups,
-    update_after_send,
-    pause_tracking,
-    get_settings,
-    init_db,
-    get_template_for_attempt,
-    save_client_reply,
-    get_reply_flags,
-    resume_tracking,
-    get_status,
-    get_last_client_reply_time,
     get_client_reply_followups,
     get_active_followups,
-    get_workspace_followup_conversation_ids,
-    get_workspace_conversation_ids
-)
-from agent_service import clean_email_body, analyze_reply
-from db import save_ai_draft
+    get_status,
+    resume_tracking,
+    pause_tracking,
+    save_client_reply,
+    save_ai_draft,
+    get_settings,
+    update_after_send,
+    get_reply_flags,
+    get_last_client_reply_time,
+    )
+from Categories.category_service import get_template_for_attempt
+from Workspaces.workspace_service import get_workspace_conversation_ids,get_workspace_followup_conversation_ids
  
 from graph_client import (
     send_followup_reply_manual,
@@ -25,11 +24,8 @@ from graph_client import (
     get_messages_in_conversation,
     get_graph_token
 )
- 
-from auth import get_access_token
 import requests
-from datetime import datetime, timezone
-from agent_service import get_agent_followup_decision
+from datetime import datetime
  
  
 # Ensure DB initialized

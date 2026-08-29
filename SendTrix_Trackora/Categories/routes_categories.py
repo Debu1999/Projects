@@ -1,3 +1,9 @@
+from flask import render_template, redirect, url_for, flash, request,jsonify
+from Categories.category_service import get_all_categories,get_category_details,clone_category_version,save_settings
+from db import get_connection
+from graph_client import get_graph_token
+from Bulk_Email.draft_bulk_sender import ensure_outlook_category_exists
+
 @app.route("/categories")
 def categories():
     return render_template("categories.html")
@@ -132,7 +138,7 @@ def save_category():
             followup_mode,
             selected_draft_ids
         )
-        token,_=get_access_token(user_id)
+        token=get_graph_token(user_id)
         headers={
             "Authorization":f"Bearer {token}",
             "Content-Type":"application/json"
