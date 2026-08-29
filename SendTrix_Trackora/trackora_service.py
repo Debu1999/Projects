@@ -282,3 +282,133 @@ def update_comparison_summary(
  
     conn.commit()
     conn.close()
+def comparison_exists(master_upload_id, target_upload_id):
+ 
+    conn = get_connection()
+    cursor = conn.cursor()
+ 
+    cursor.execute("""
+        SELECT id
+        FROM comparison_logs
+        WHERE from_upload_id = %s
+        AND to_upload_id = %s
+    """, (
+        master_upload_id,
+        target_upload_id
+    ))
+ 
+    row = cursor.fetchone()
+ 
+    conn.close()
+ 
+    return row[0] if row else None
+
+def run_comparison(master_upload_id, target_upload_id):
+    from datetime import datetime, timezone
+
+    print("MASTER_UPLOAD_ID:",master_upload_id)
+    print("TARGET_UPLOAD_ID:",target_upload_id)
+    old_data = get_snapshot_by_upload(master_upload_id)
+    new_data = get_snapshot_by_upload(target_upload_id)
+    print("OLD COUNT:", len(old_data))
+    print("NEW COUNT:", len(new_data))
+    master_count=len(old_data)
+    target_count=len(new_data)
+    
+    print("ASN0001470 IN OLD:",
+      "ASN0001470" in old_data)
+    print("ASN0001470 IN NEW:",
+      "ASN0001470" in new_data)
+ 
+    conn = get_connection()
+    cursor = conn.cursor()
+ 
+    now = datetime.now(timezone.utc).isoformat()
+    existing=comparison_exists(
+        master_upload_id,
+        target_upload_id
+    )
+    print("EXISTING_COMPARISON:",existing)
+    if existing:
+        return existing
+    # ✅ Create comparison
+    comparison_id = create_comparison(cursor, master_upload_id, target_upload_id,master_count,target_count)
+ 
+    changes = []
+ 
+    added = 0
+    modified = 0
+    missing = 0
+ 
+    # 🔹 ADDED & MODIFIED
+    for asn, new_row in new_data.items():
+        # =========================
+        # ADDED APPLICATION
+        # =========================
+        if asn not in old_data:
+            changes.append((
+                comparison_id,
+                asn,
+                "-",
+                "-",
+                "New Record",
+                "ADDED",
+                now,
+                json.dumps(new_row)
+            ))
+            added += 1
+        # =========================
+        # MODIFIED APPLICATION
+        # =========================
+        else:
+            old_row = old_data[asn]
+            for field in new_row:
+                old_value = str(old_row.get(field) or "").strip()
+                new_value = str(new_row.get(field) or "").strip()
+                # Skip ASN itself
+                if field == "appser_number":
+                    continue
+                if old_value != new_value:
+                    changes.append((
+                        comparison_id,
+                        asn,
+                        field,
+                        old_value,
+                        new_value,
+                        "MODIFIED",
+                        now,
+                        None
+                    ))
+                    modified += 1
+    # 🔹 MISSING
+
+    for asn in old_data:
+        if asn not in new_data:
+            changes.append((
+                comparison_id, asn, "-", "Exists", "Missing", "MISSING", now,None
+            ))
+            missing += 1
+ 
+    # ✅ BULK INSERT (VERY IMPORTANT)
+    
+    cursor.executemany("""
+        INSERT INTO comparison_changes (
+            comparison_id,
+            appser_number,
+            field_name,
+            old_value,
+            new_value,
+            change_type,
+            created_at,
+            row_data
+        )
+        VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
+    """, changes)
+ 
+    conn.commit()
+    conn.close()
+ 
+    # Optional summary
+    update_comparison_summary(comparison_id, added, modified, missing)
+ 
+    return comparison_id
