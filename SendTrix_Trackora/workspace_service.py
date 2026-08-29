@@ -250,3 +250,45 @@ def get_workspace_conversations(workspace_id):
         }
         for row in rows
     ]
+def get_workspace_rows(workspace_id):
+ 
+    rows = get_rows()
+ 
+    workspace_conversations = get_workspace_conversations(
+        workspace_id
+    )
+ 
+    conversation_ids = {
+        str(item["conversation_id"])
+        for item in workspace_conversations
+    }
+ 
+    print("===================================")
+    print("WORKSPACE ID:", workspace_id)
+    print("WORKSPACE CONVERSATIONS:", workspace_conversations)
+    print("WORKSPACE CONVERSATION IDS:", conversation_ids)
+ 
+    print("ALL SENDTRIX ROW IDS:")
+ 
+    for row in rows:
+        print(
+            "ID:",
+            row[13],
+            "TYPE:",
+            type(row[13])
+        )
+ 
+    print("===================================")
+ 
+    filtered_rows = [
+        row
+        for row in rows
+        if str(row[13]) in conversation_ids
+    ]
+ 
+    print(
+        "MATCHED WORKSPACE ROWS:",
+        len(filtered_rows)
+    )
+ 
+    return filtered_rows
