@@ -1,4 +1,13 @@
 import psycopg
+from datetime import datetime, timedelta, timezone
+from zoneinfo import ZoneInfo
+import os
+import sys
+import json
+from dotenv import load_dotenv
+from flask import session
+
+load_dotenv()
 def get_connection():
     return psycopg.connect(
         host=os.getenv("DB_HOST"),
@@ -442,3 +451,97 @@ def init_db():
  
     finally:
         conn.close()
+def get_or_create_user_from_msal(result):
+    claims = result.get("id_token_claims", {})
+ 
+    microsoft_user_id = claims.get("oid")
+    email = claims.get("preferred_username")
+    display_name = claims.get("name")
+ 
+    if not microsoft_user_id:
+        raise Exception("Microsoft user ID (oid) was not returned by Microsoft.")
+ 
+    if not email:
+        raise Exception("Microsoft email/username was not returned by Microsoft.")
+ 
+    conn = get_connection()
+ 
+    try:
+        with conn.cursor() as cursor:
+ 
+            # Check whether this Microsoft user already exists
+            cursor.execute("""
+                SELECT id
+                FROM users
+                WHERE microsoft_user_id = %s
+            """, (microsoft_user_id,))
+ 
+            row = cursor.fetchone()
+ 
+            if row:
+                user_id = row[0]
+ 
+                # Keep profile information up to date
+                cursor.execute("""
+                    UPDATE users
+                    SET email = %s,
+                        display_name = %s,
+                        updated_at = NOW()
+                    WHERE id = %s
+                """, (
+                    email,
+                    display_name,
+                    user_id
+                ))
+ 
+            else:
+                # Create new SendTrix user
+                cursor.execute("""
+                    INSERT INTO users (
+                        microsoft_user_id,
+                        email,
+                        display_name
+                    )
+                    VALUES (%s, %s, %s)
+                    RETURNING id
+                """, (
+                    microsoft_user_id,
+                    email,
+                    display_name
+                ))
+ 
+                user_id = cursor.fetchone()[0]
+ 
+        conn.commit()
+ 
+        return user_id
+ 
+    finally:
+        conn.close()
+
+def get_user_by_microsoft_id(microsoft_user_id):
+    conn = get_connection()
+ 
+    try:
+        with conn.cursor() as cursor:
+            cursor.execute("""
+                SELECT id, email, display_name
+                FROM users
+                WHERE microsoft_user_id = %s
+            """, (microsoft_user_id,))
+ 
+            row = cursor.fetchone()
+ 
+            if not row:
+                return None
+ 
+            return {
+                "id": row[0],
+                "email": row[1],
+                "display_name": row[2]
+            }
+ 
+    finally:
+        conn.close()
+ 
+ 
