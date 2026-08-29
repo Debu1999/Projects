@@ -227,3 +227,26 @@ def remove_conversation_from_workspace(conversation_id):
     conn.close()
  
     return removed
+def get_workspace_conversations(workspace_id):
+    conn = get_connection()
+    cursor = conn.cursor()
+ 
+    cursor.execute("""
+        SELECT
+            wc.conversation_id,
+            wc.assigned_at
+        FROM workspace_conversations wc
+        WHERE wc.workspace_id = %s
+        ORDER BY wc.assigned_at DESC
+    """, (workspace_id,))
+ 
+    rows = cursor.fetchall()
+    conn.close()
+ 
+    return [
+        {
+            "conversation_id": row[0],
+            "assigned_at": row[1]
+        }
+        for row in rows
+    ]
