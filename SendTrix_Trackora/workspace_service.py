@@ -212,3 +212,18 @@ def move_conversation_to_workspace(
     conn.close()
  
     return updated
+def remove_conversation_from_workspace(conversation_id):
+    conn = get_connection()
+    cursor = conn.cursor()
+ 
+    cursor.execute("""
+        DELETE FROM workspace_conversations
+        WHERE conversation_id = %s
+    """, (conversation_id,))
+ 
+    removed = cursor.rowcount > 0
+ 
+    conn.commit()
+    conn.close()
+ 
+    return removed
