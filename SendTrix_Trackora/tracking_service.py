@@ -303,3 +303,19 @@ def get_active_followups():
     conn.close()
  
     return rows
+def get_followups_by_status(status):
+    user_id = get_current_user_id()
+    conn = get_connection()
+    cursor = conn.cursor()
+ 
+    cursor.execute("""
+        SELECT subject, category_name, attempt_count,
+               next_followup_at, updated_at
+        FROM followups
+        WHERE status = %s AND user_id = %s
+        ORDER BY next_followup_at
+    """, (status, user_id))
+ 
+    rows = cursor.fetchall()
+    conn.close()
+    return rows
