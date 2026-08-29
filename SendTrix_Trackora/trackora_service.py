@@ -104,3 +104,35 @@ def insert_snapshot_bulk(cursor, upload_id, row):
         row.get("exception_reason", ""),
         now
     ))
+
+def insert_raw_snapshot_bulk(
+    cursor,
+    upload_id,
+    row
+):
+ 
+    import json
+    from datetime import datetime, timezone
+ 
+    now = datetime.now(
+        timezone.utc
+    ).isoformat()
+ 
+    appser_number = str(
+        row.get("appser_number", "")
+    ).strip()
+ 
+    cursor.execute("""
+    INSERT INTO applications_raw_data (
+        upload_id,
+        appser_number,
+        row_data,
+        created_at
+    )
+    VALUES (%s, %s, %s, %s)
+    """, (
+        upload_id,
+        appser_number,
+        json.dumps(row,default=str),
+        now
+    ))
