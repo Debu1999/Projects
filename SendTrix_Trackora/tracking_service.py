@@ -38,3 +38,20 @@ def update_ai_draft_status(conversation_id, status, new_body=None):
         """, (status, datetime.now(timezone.utc), conversation_id, user_id))
     conn.commit()
     conn.close()
+def get_ai_draft(conversation_id):
+    user_id = get_current_user_id()
+    conn = get_connection()
+    cursor = conn.cursor()
+    cursor.execute("""
+        SELECT ai_draft_body, ai_draft_reasoning, ai_classification,
+               ai_analyzed_at, ai_draft_status
+        FROM followups WHERE conversation_id = %s AND user_id = %s
+    """, (conversation_id, user_id))
+    row = cursor.fetchone()
+    conn.close()
+    if not row or not row[3]:
+        return None
+    return {
+        "draft_body": row[0], "reasoning": row[1],
+        "classification": row[2], "analyzed_at": row[3], "status": row[4],
+    }
