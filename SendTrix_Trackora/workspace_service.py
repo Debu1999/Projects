@@ -306,4 +306,19 @@ def get_workspace_conversation_ids(workspace_id):
     conn.close()
  
     return [row[0] for row in rows]
+def get_workspace_followup_conversation_ids(workspace_id):
+    conn = get_connection()
+    cursor = conn.cursor()
  
+    cursor.execute("""
+        SELECT f.conversation_id
+        FROM followups f
+        INNER JOIN workspace_conversations wc
+            ON f.conversation_id = wc.conversation_id
+        WHERE wc.workspace_id = %s
+    """, (workspace_id,))
+ 
+    rows = cursor.fetchall()
+    conn.close()
+ 
+    return [row[0] for row in rows]
