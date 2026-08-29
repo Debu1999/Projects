@@ -179,3 +179,79 @@ def save_settings(category_name, followup_text, max_attempts, interval_minutes,
     conn.close()
  
     return new_version
+def get_latest_category_version(category_name):
+    user_id = get_current_user_id()
+    conn = get_connection()
+    cursor = conn.cursor()
+ 
+    cursor.execute("""
+    SELECT MAX(version)
+    FROM settings
+    WHERE user_id = %s AND category_name = %s
+    """, (user_id, category_name))
+ 
+    row = cursor.fetchone()
+    cursor.close()
+    conn.close()
+ 
+    return row[0] if row and row[0] else 0
+def clone_category_version(category_name, source_version):
+    user_id = get_current_user_id()
+ 
+    conn = get_connection()
+    cursor = conn.cursor()
+ 
+    # get latest version safely
+    cursor.execute("""
+    SELECT MAX(version)
+    FROM settings
+    WHERE user_id=%s AND category_name=%s
+    """,(user_id, category_name,))
+ 
+    row = cursor.fetchone()
+    latest_version = row[0] if row and row[0] else 0
+    new_version = latest_version + 1
+ 
+    now = datetime.now(timezone.utc)
+ 
+    # copy settings
+    cursor.execute("""
+    INSERT INTO settings
+    (user_id, category_name, version, followup_text, max_attempts,
+     interval_minutes, followup_mode, updated_at)
+ 
+    SELECT
+    user_id,
+    category_name,
+    %s,
+    followup_text,
+    max_attempts,
+    interval_minutes,
+    followup_mode,
+    %s
+    FROM settings
+    WHERE user_id=%s AND category_name=%s AND version=%s
+    """,(new_version,now,user_id,category_name,source_version))
+ 
+    # copy templates
+    cursor.execute("""
+    INSERT INTO category_templates
+    (user_id,category_name,version,order_number,draft_id,draft_subject)
+ 
+    SELECT
+    user_id,
+    category_name,
+    %s,
+    order_number,
+    draft_id,
+    draft_subject
+    FROM category_templates
+    WHERE user_id=%s AND category_name=%s AND version=%s
+    """,(new_version,user_id,category_name,source_version))
+ 
+    conn.commit()
+    cursor.close()
+    conn.close()
+ 
+    return new_version
+ 
