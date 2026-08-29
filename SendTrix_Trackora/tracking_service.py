@@ -278,3 +278,28 @@ def get_due_followups():
     conn.close()
  
     return rows
+
+def get_active_followups():
+    user_id = get_current_user_id()
+ 
+    conn = get_connection()
+    cursor = conn.cursor()
+ 
+    cursor.execute("""
+        SELECT
+            message_id,
+            conversation_id,
+            category_name,
+            category_version,
+            attempt_count,
+            last_followup_sent_at,
+            original_recipients
+        FROM followups
+        WHERE status = 'ACTIVE' AND user_id = %s
+    """, (user_id,))
+ 
+    rows = cursor.fetchall()
+ 
+    conn.close()
+ 
+    return rows
