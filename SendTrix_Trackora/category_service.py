@@ -42,3 +42,33 @@ def get_template_folders():
  
     finally:
         conn.close()
+def save_template_folders_settings(primary_folder_id, secondary_folder_id):
+    print("Saving to DB:", primary_folder_id, secondary_folder_id)
+ 
+    user_id = get_current_user_id()
+ 
+    conn = get_connection()
+ 
+    try:
+        with conn.cursor() as cursor:
+            cursor.execute("""
+                INSERT INTO folder_settings (
+                    primary_folder_id,
+                    secondary_folder_id,
+                    user_id
+                )
+                VALUES (%s, %s, %s)
+                ON CONFLICT (user_id)
+                DO UPDATE SET
+                    primary_folder_id = EXCLUDED.primary_folder_id,
+                    secondary_folder_id = EXCLUDED.secondary_folder_id
+            """, (
+                primary_folder_id,
+                secondary_folder_id,
+                user_id
+            ))
+ 
+        conn.commit()
+ 
+    finally:
+        conn.close()
