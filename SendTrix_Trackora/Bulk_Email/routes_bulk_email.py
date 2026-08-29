@@ -1,4 +1,4 @@
-from app import app
+from flask_server import app
 from Categories.category_service import (
     get_template_folders,
     get_all_categories,

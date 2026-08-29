@@ -1,4 +1,4 @@
-from app import app
+from flask_server import app
 from graph_client import (
     get_outlook_drafts,
     get_draft_child_folders,

@@ -1,14 +1,14 @@
-from flask import Flask
-import os
 from db import init_db
-from dotenv import load_dotenv
 
-load_dotenv()
-app = Flask(__name__)
-app.secret_key = os.getenv("FLASK_SECRET_KEY")
+from flask_server import app
+from Auth import routes_auth
+from Bulk_Email import routes_bulk_email
+from Categories import routes_categories
+from Tracking import routes_tracking
+from Trackora import routes_trackora
+from Workspaces import routes_workspaces
 
-if not app.secret_key:
-    raise RuntimeError("FLASK_SECRET_KEY is not Configured")
+
 
 if __name__ == "__main__":
     init_db()

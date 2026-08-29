@@ -1,5 +1,5 @@
 import requests
-from SendTrix_Trackora.Auth.auth import get_access_token
+from Auth.auth import get_access_token
 from datetime import datetime, timedelta
 from flask import session
 

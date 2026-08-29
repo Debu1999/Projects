@@ -1,3 +1,4 @@
+from flask_server import app
 from flask import render_template, redirect, url_for, flash, request,jsonify
 from Categories.category_service import get_all_categories,get_category_details,clone_category_version,save_settings
 from db import get_connection

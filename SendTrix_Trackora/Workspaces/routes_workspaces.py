@@ -1,4 +1,4 @@
-from app import app
+from flask_server import app
 from process import process,refresh_conversations
 from flask import flash,redirect,url_for,render_template,jsonify,request
 from Workspaces.workspace_service import get_workspaces,get_workspace_rows,create_workspace,add_conversation_to_workspace,move_conversation_to_workspace

@@ -1,4 +1,4 @@
-from app import app
+from flask_server import app
 from Tracking.sendtrix_service import get_rows,get_dashboard_counts
 from Tracking.tracking_service import (
     get_unread_replies,

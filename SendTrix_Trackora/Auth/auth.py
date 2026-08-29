@@ -1,7 +1,7 @@
 import msal
 import os
 from dotenv import load_dotenv
-from db import get_or_create_user_from_msal,get_user_by_microsoft_id
+from db import get_or_create_user_from_msal
 from cryptography.fernet import Fernet
  
 load_dotenv()

@@ -1,16 +1,16 @@
-from app import app
+from flask_server import app
 import io,os
 import pandas as pd
 from datetime import datetime, timedelta, timezone
 from flask import render_template,request,jsonify,send_file
 import requests
-from trackora_nl_query import natural_language_to_sql,run_safe_query,is_safe_select
+from .trackora_nl_query import natural_language_to_sql,run_safe_query,is_safe_select
 from db import get_connection
 from Categories.category_service import get_template_folders
 from Bulk_Email.draft_bulk_sender import send_bulk_from_draft
 from graph_client import get_followup_drafts
 from Bulk_Email.draft_bulk_sender import send_consolidated_from_draft
-from trackora_service import (
+from .trackora_service import (
     get_recommended_action,
     get_send_mail_flag,
     run_comparison,
@@ -596,7 +596,7 @@ def download_master_data():
     import pandas as pd
     from io import BytesIO
     from flask import Response
-    from trackora_report_narrative import compute_compliance_summary, generate_summary_narrative
+    from .trackora_report_narrative import compute_compliance_summary, generate_summary_narrative
 
     conn = get_connection()
     cursor = conn.cursor()
