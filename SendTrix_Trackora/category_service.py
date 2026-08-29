@@ -1,3 +1,6 @@
+from db import get_connection,get_current_user_id
+from datetime import datetime,timedelta,timezone
+
 def get_template_for_attempt(category_name,version,attempt_number):
     conn = get_connection()
     cursor = conn.cursor()

@@ -1,25 +1,3 @@
-def get_dashboard_counts():
-    conn = get_connection()
-    cursor = conn.cursor()
- 
-    cursor.execute("SELECT COUNT(*) FROM followups WHERE status = 'ACTIVE'")
-    active = cursor.fetchone()[0]
- 
-    cursor.execute("SELECT COUNT(*) FROM followups WHERE status = 'COMPLETED'")
-    completed = cursor.fetchone()[0]
- 
-    cursor.execute("SELECT COUNT(*) FROM followups WHERE status = 'CLIENT_REPLY'")
-    client_reply = cursor.fetchone()[0]
-
-    cursor.execute("SELECT COUNT(*) FROM followups WHERE status = 'MANUAL_PAUSED'")
-    manual_pause = cursor.fetchone()[0]
- 
-    cursor.execute("SELECT COUNT(*) FROM followups")
-    total = cursor.fetchone()[0]
- 
-    conn.close()
- 
-    return active, completed, client_reply,manual_pause, total
 @app.route("/")
 def dashboard():
     search=request.args.get("search","")

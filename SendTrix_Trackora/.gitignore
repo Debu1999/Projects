@@ -1,0 +1,38 @@
+# Python
+__pycache__/
+*.py[cod]
+ 
+# Virtual environment
+myenv/
+.venv/
+venv/
+ 
+# Secrets
+.env
+token_cache.json
+ 
+# Database
+*.db
+*.sqlite
+*.sqlite3
+ 
+# IDE
+.vscode/
+.idea/
+ 
+# Logs
+*.log
+ 
+# Temporary files
+*.tmp
+*.temp
+
+uploads/
+temp_image_0.png
+
+# Trackora evidence/test files
+trackora/*.png
+trackora/*.jpg
+trackora/*.jpeg
+trackora/*.docx
+trackora/*.msg

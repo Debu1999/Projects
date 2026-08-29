@@ -500,3 +500,178 @@ def ignore_all_changes_db(comparison_id):
  
     conn.commit()
     conn.close()
+def carry_forward_mail_config(old_master_id, new_master_id):
+    print("MAIL COPY")
+    print("OLD =", old_master_id)
+    print("NEW =", new_master_id)
+ 
+    if not old_master_id:
+        return
+ 
+    conn = get_connection()
+    cursor = conn.cursor()
+ 
+    cursor.execute("""
+    DELETE FROM application_mail_config
+    WHERE upload_id = %s
+    """, (new_master_id,))
+ 
+    cursor.execute("""
+    INSERT INTO application_mail_config
+    (
+        upload_id,
+        appser_number,
+        draft_id,
+        category
+    )
+    SELECT
+        %s,
+        appser_number,
+        draft_id,
+        category
+    FROM application_mail_config
+    WHERE upload_id = %s
+    """, (
+        new_master_id,
+        old_master_id
+    ))
+ 
+    conn.commit()
+    conn.close()
+def initialize_or_carry_analysis(old_master_id, new_master_id):
+    conn = get_connection()
+    cursor = conn.cursor()
+
+    if old_master_id is None:
+        conn.close()
+        return
+
+    print("=" * 50)
+    print("OLD MASTER:", old_master_id)
+    print("NEW MASTER:", new_master_id)
+    print("=" * 50)
+
+    # Check whether this upload already has analysis
+    cursor.execute("""
+    SELECT COUNT(*)
+    FROM application_analysis
+    WHERE upload_id = %s
+    """, (new_master_id,))
+    existing_rows = cursor.fetchone()[0]
+    
+    if existing_rows > 0:
+        print("Analysis already exists for upload:", new_master_id)
+        conn.close()
+        return
+ 
+    # Get old analysis (if exists)
+    old_data = {}
+    cursor.execute("""
+    SELECT *
+    FROM application_analysis
+    WHERE upload_id=%s
+    """,(old_master_id,))
+    columns = [d[0] for d in cursor.description]
+        
+    for row in cursor.fetchall():
+        data = dict(zip(columns, row))
+        old_data[data["appser_number"]] = data
+ 
+    # Get new snapshot ASNs
+    cursor.execute("""
+        SELECT appser_number FROM applications_snapshot
+        WHERE upload_id = %s
+    """, (new_master_id,))
+    new_rows = [r[0] for r in cursor.fetchall()]
+ 
+    for asn in new_rows:
+        if asn in old_data:
+            data=old_data[asn]
+            # Remove old primary key
+            data.pop("id", None)
+            # Point to the new master
+            data["upload_id"] = new_master_id
+            # Fresh timestamp
+            data["updated_at"] = datetime.now(timezone.utc).isoformat()
+            # Start a new review cycle
+            #data["last_reviewed_date"] = None
+            #data["next_due_date"] = None
+            #data["review_start_date"]
+            print("COPYING ASN:",asn)
+            print(data)
+            cols = ",".join(data.keys())
+            placeholders = ",".join(["?"] * len(data))
+            cursor.execute(f"""
+            INSERT INTO application_analysis
+            ({cols})
+            VALUES ({placeholders})
+            """,
+            tuple(data.values())
+            )
+        else:
+            cursor.execute("""
+            INSERT INTO application_analysis
+            (
+            upload_id,
+            appser_number,
+            updated_at
+            )
+            VALUES (%s, %s, %s)
+            """, (
+                new_master_id,
+                asn,
+                datetime.now(timezone.utc).isoformat()
+            ))
+    cursor.execute("""
+    SELECT COUNT(*)
+    FROM application_analysis
+    WHERE upload_id = %s
+    """, (new_master_id,))
+    print("Rows before commit:", cursor.fetchone()[0])
+    conn.commit()
+    conn.close()
+def run_compliance_engine(upload_id):
+ 
+    conn = get_connection()
+    cursor = conn.cursor()
+ 
+    now = datetime.now(timezone.utc)
+ 
+    cursor.execute("""
+    SELECT appser_number, next_due_date, internal_status
+    FROM application_analysis
+    WHERE upload_id = %s
+    """, (upload_id,))
+ 
+    rows = cursor.fetchall()
+ 
+    for r in rows:
+        asn = r[0]
+        next_due = r[1]
+        status = r[2]
+ 
+        if not next_due:
+            continue
+ 
+        try:
+            next_due_dt = datetime.fromisoformat(next_due)
+            if next_due_dt.tzinfo is None:
+                next_due_dt=next_due_dt.replace(tzinfo=timezone.utc)
+        except Exception as e:
+            print("Data parse error:",e)
+            continue
+        print("CHECK:",asn,now,next_due_dt,status)
+ 
+        # 🔥 CORRECT COMPARISON
+        if now > next_due_dt and status == "Compliant":
+            print("Expiring:",asn)
+            cursor.execute("""
+            UPDATE application_analysis
+            SET internal_status = 'Non-compliant',
+                send_mail = 1,
+                updated_at = %s
+            WHERE upload_id = %s AND appser_number = %s
+            """, (now.isoformat(), upload_id, asn))
+ 
+    conn.commit()
+    conn.close()
