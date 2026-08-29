@@ -319,3 +319,18 @@ def get_followups_by_status(status):
     rows = cursor.fetchall()
     conn.close()
     return rows
+
+def get_last_client_reply_time(conversation_id):
+    user_id = get_current_user_id()
+    conn = get_connection()
+    cursor = conn.cursor()
+ 
+    cursor.execute("""
+    SELECT last_client_reply_at FROM followups
+    WHERE conversation_id = %s AND user_id = %s
+    """, (conversation_id, user_id))
+ 
+    row = cursor.fetchone()
+    conn.close()
+ 
+    return row[0] if row else None
