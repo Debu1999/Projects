@@ -210,3 +210,42 @@ def save_comment(appser_number, version_id, comment):
  
     conn.commit()
     conn.close()
+def get_snapshot_by_upload(upload_id):
+ 
+    import json
+ 
+    conn = get_connection()
+    cursor = conn.cursor()
+ 
+    cursor.execute("""
+    SELECT appser_number, row_data
+    FROM applications_raw_data
+    WHERE upload_id = %s
+    """, (upload_id,))
+ 
+    rows = cursor.fetchall()
+ 
+    conn.close()
+ 
+    result = {}
+ 
+    for row in rows:
+ 
+        appser_number = row[0]
+ 
+        try:
+            row_data = json.loads(row[1])
+        except:
+            row_data = {}
+ 
+        result[appser_number] = row_data
+    print(
+    "UPLOAD:",
+    upload_id,
+    "DB_ROWS:",
+    len(rows),
+    "DICT_ROWS:",
+    len(result))
+ 
+    return result
+ 
