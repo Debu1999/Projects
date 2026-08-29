@@ -58,3 +58,49 @@ def upsert_application(app_data):
  
     conn.commit()
     conn.close()
+def insert_snapshot_bulk(cursor, upload_id, row):
+ 
+    now = datetime.now(timezone.utc).isoformat()
+ 
+    if not row.get("appser_number"):
+        return
+ 
+    cursor.execute("""
+    INSERT INTO applications_snapshot (
+        upload_id,
+        appser_number,
+        appser_name,
+        appser_install_status,
+        so_u_sbg,
+        owner_name,
+        tech_owner_name,
+        current_installed_version,
+        vendor_name,
+        reviewer_id,
+        reviewed_date,
+        u_run_operations_focal,
+        compliance_mode,
+        remediation_due_date,
+        exception_reason,
+        status,
+        created_at
+    )
+    VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, 'ACTIVE', %s)
+    """, (
+        upload_id,
+        row.get("appser_number"),
+        row.get("appser_name"),
+        row.get("appser_install_status"),
+        row.get("so_u_sbg"),
+        row.get("owner_name"),
+        row.get("tech_owner_name"),
+        row.get("current_installed_version"),
+        row.get("vendor_name"),
+        row.get("reviewer_id"),
+        now,
+        row.get("u_run_operations_focal"),
+        row.get("compliance_mode", "FREQUENCY"),
+        row.get("remediation_due_date", ""),
+        row.get("exception_reason", ""),
+        now
+    ))
