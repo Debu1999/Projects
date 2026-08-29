@@ -20,3 +20,25 @@ def get_template_for_attempt(category_name,version,attempt_number):
     if attempt_number<=len(templates):
         return {"draft_id":templates[attempt_number-1]}
     return {"draft_id":templates[-1]}
+def get_template_folders():
+    user_id = get_current_user_id()
+ 
+    conn = get_connection()
+ 
+    try:
+        with conn.cursor() as cursor:
+            cursor.execute("""
+                SELECT primary_folder_id, secondary_folder_id
+                FROM folder_settings
+                WHERE user_id = %s
+                AND primary_folder_id IS NOT NULL
+                AND secondary_folder_id IS NOT NULL
+                LIMIT 1
+            """, (user_id,))
+ 
+            row = cursor.fetchone()
+ 
+        return row
+ 
+    finally:
+        conn.close()
