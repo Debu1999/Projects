@@ -573,3 +573,23 @@ def save_client_reply(conversation_id, email, reply_time,subject,body,message_id
  
     conn.commit()
     conn.close()
+def ignore_reply(conversation_id):
+    user_id = get_current_user_id()
+    conn = get_connection()
+    cursor = conn.cursor()
+ 
+    cursor.execute("""
+    UPDATE followups
+    SET is_ignored_reply = 1,
+        is_unread_reply = 0,
+        last_followup_sent_at=last_client_reply_at,
+        updated_at = %s
+    WHERE conversation_id = %s AND user_id = %s
+    """, (
+        datetime.now(timezone.utc),
+        conversation_id,
+        user_id
+    ))
+ 
+    conn.commit()
+    conn.close()
