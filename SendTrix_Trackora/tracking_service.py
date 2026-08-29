@@ -198,3 +198,49 @@ def resume_tracking(conversation_id):
     conn.close()
  
     log_activity(conversation_id, "Resumed Automatically")
+def restart_followup(conversation_id,new_version=None):
+    user_id = get_current_user_id()
+    conn = get_connection()
+    cursor = conn.cursor()
+ 
+    now = datetime.now(timezone.utc)
+ 
+    # Get category to calculate next interval
+    cursor.execute("""
+        SELECT category_name,category_version FROM followups
+        WHERE conversation_id = %s AND user_id = %s
+    """, (conversation_id, user_id))
+    row = cursor.fetchone()
+ 
+    if not row:
+        conn.close()
+        return
+ 
+    category_name,version = row
+
+    if new_version:
+        version=new_version
+        
+    settings = get_settings(category_name,version)
+ 
+    if not settings:
+        conn.close()
+        return
+ 
+    _, _, interval_minutes,_ = settings
+    next_time = now + timedelta(minutes=interval_minutes)
+ 
+    cursor.execute("""
+        UPDATE followups
+        SET status = 'ACTIVE',
+            attempt_count = 0,
+            category_version=%s,
+            next_followup_at = %s,
+            updated_at = %s
+        WHERE conversation_id = %s AND user_id = %s
+    """, (version,next_time, now, conversation_id, user_id))
+ 
+    conn.commit()
+    conn.close()
+
+    log_activity(conversation_id,"Restarted by User")
