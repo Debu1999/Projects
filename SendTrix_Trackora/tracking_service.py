@@ -334,3 +334,18 @@ def get_last_client_reply_time(conversation_id):
     conn.close()
  
     return row[0] if row else None
+def get_client_reply_followups():
+    user_id = get_current_user_id()
+    conn = get_connection()
+    cursor = conn.cursor()
+ 
+    cursor.execute("""
+    SELECT message_id, conversation_id, category_name, category_version,
+           attempt_count, last_followup_sent_at, original_recipients
+    FROM followups
+    WHERE status = 'CLIENT_REPLY' AND user_id = %s
+    """, (user_id,))
+ 
+    rows = cursor.fetchall()
+    conn.close()
+    return rows
