@@ -244,3 +244,17 @@ def restart_followup(conversation_id,new_version=None):
     conn.close()
 
     log_activity(conversation_id,"Restarted by User")
+def get_status(conversation_id):
+    user_id = get_current_user_id()
+    conn = get_connection()
+    cursor = conn.cursor()
+ 
+    cursor.execute("""
+    SELECT status FROM followups
+    WHERE conversation_id = %s AND user_id = %s
+    """, (conversation_id, user_id))
+ 
+    row = cursor.fetchone()
+    conn.close()
+ 
+    return row[0] if row else None
