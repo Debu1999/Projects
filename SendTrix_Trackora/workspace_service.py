@@ -60,3 +60,44 @@ def get_workspaces():
         }
         for row in rows
     ]
+def rename_workspace(workspace_id, workspace_name, description=None):
+    conn = get_connection()
+    cursor = conn.cursor()
+ 
+    now = datetime.now().isoformat()
+ 
+    if description is None:
+ 
+        cursor.execute("""
+            UPDATE workspaces
+            SET workspace_name = %s,
+                updated_at = %s
+            WHERE id = %s
+        """, (
+            workspace_name.strip(),
+            now,
+            workspace_id
+        ))
+ 
+    else:
+ 
+        cursor.execute("""
+            UPDATE workspaces
+            SET workspace_name = %s,
+                description = %s,
+                updated_at = %s
+            WHERE id = %s
+        """, (
+            workspace_name.strip(),
+            description.strip(),
+            now,
+            workspace_id
+        ))
+ 
+    conn.commit()
+ 
+    updated = cursor.rowcount > 0
+ 
+    conn.close()
+ 
+    return updated
