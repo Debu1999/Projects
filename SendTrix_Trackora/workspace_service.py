@@ -27,3 +27,36 @@ def create_workspace(workspace_name, description=""):
     conn.close()
  
     return workspace_id
+def get_workspaces():
+    conn = get_connection()
+    cursor = conn.cursor()
+ 
+    cursor.execute("""
+        SELECT
+            id,
+            workspace_name,
+            description,
+            workspace_type,
+            status,
+            created_at,
+            updated_at
+        FROM workspaces
+        WHERE status = 'ACTIVE'
+        ORDER BY updated_at DESC
+    """)
+ 
+    rows = cursor.fetchall()
+    conn.close()
+ 
+    return [
+        {
+            "id": row[0],
+            "workspace_name": row[1],
+            "description": row[2],
+            "workspace_type": row[3],
+            "status": row[4],
+            "created_at": row[5],
+            "updated_at": row[6]
+        }
+        for row in rows
+    ]
