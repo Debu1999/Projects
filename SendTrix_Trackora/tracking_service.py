@@ -98,3 +98,37 @@ def log_activity(conversation_id, action):
  
     conn.commit()
     conn.close()
+def get_activity(conversation_id):
+    user_id = get_current_user_id()
+    conn = get_connection()
+    cursor = conn.cursor()
+ 
+    cursor.execute("""
+        SELECT action, created_at
+        FROM activity_logs
+        WHERE conversation_id = %s AND user_id = %s
+        ORDER BY created_at DESC
+    """, (conversation_id, user_id))
+ 
+    rows = cursor.fetchall()
+    conn.close()
+    return rows    
+
+def get_all_activity():
+    conn = get_connection()
+    cursor = conn.cursor()
+ 
+    cursor.execute("""
+        SELECT 
+            f.subject,
+            a.action,
+            a.created_at
+        FROM activity_logs a
+        JOIN followups f 
+            ON a.conversation_id = f.conversation_id
+        ORDER BY a.created_at DESC
+    """)
+ 
+    rows = cursor.fetchall()
+    conn.close()
+    return rows
