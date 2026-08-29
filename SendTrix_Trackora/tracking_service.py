@@ -542,3 +542,34 @@ def update_after_send(conversation_id, category_name):
  
         # ✅ Log attempt
         log_activity(conversation_id, f"Followup Attempt #{new_attempt} sent")
+
+def save_client_reply(conversation_id, email, reply_time,subject,body,message_id):
+    user_id = get_current_user_id()
+    conn = get_connection()
+    cursor = conn.cursor()
+ 
+    cursor.execute("""
+    UPDATE followups
+    SET last_client_reply_at = %s,
+        last_client_email = %s,
+        last_reply_subject=%s,
+        last_reply_body=%s,
+        last_reply_message_id=%s,
+        is_unread_reply=1,
+        is_ignored_reply=0,
+        auto_followup_enabled=0,
+        updated_at = %s
+    WHERE conversation_id = %s AND user_id = %s
+    """, (
+        reply_time if reply_time else None,
+        email,
+        subject,
+        body,
+        message_id,
+        datetime.now(timezone.utc),
+        conversation_id,
+        user_id
+    ))
+ 
+    conn.commit()
+    conn.close()
