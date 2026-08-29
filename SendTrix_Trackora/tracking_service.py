@@ -82,3 +82,19 @@ def update_ai_result(
  
     conn.commit()
     conn.close()
+
+def log_activity(conversation_id, action):
+    conn = get_connection()
+    cursor = conn.cursor()
+ 
+    cursor.execute("""
+        INSERT INTO activity_logs (conversation_id, action, created_at)
+        VALUES (%s, %s, %s)
+    """, (
+        conversation_id,
+        action,
+        datetime.now(timezone.utc).isoformat()
+    ))
+ 
+    conn.commit()
+    conn.close()
