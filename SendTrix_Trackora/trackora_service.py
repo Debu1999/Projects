@@ -136,3 +136,60 @@ def insert_raw_snapshot_bulk(
         json.dumps(row,default=str),
         now
     ))
+def get_latest_external_responder(asn):
+    from graph_client import get_current_user_email,get_messages_in_conversation
+ 
+    conn = get_connection()
+    cursor = conn.cursor()
+ 
+    cursor.execute("""
+    SELECT upload_id
+    FROM master_control
+    WHERE is_active = 1
+    """)
+ 
+    row = cursor.fetchone()
+ 
+    if not row:
+        return None
+ 
+    upload_id = row[0]
+ 
+    cursor.execute("""
+    SELECT conversation_id
+    FROM application_analysis
+    WHERE upload_id = %s
+    AND appser_number = %s
+    """, (
+        upload_id,
+        asn
+    ))
+ 
+    conv_row = cursor.fetchone()
+ 
+    conn.close()
+ 
+    if not conv_row:
+        return None
+ 
+    conversation_id = conv_row[0]
+ 
+    messages = get_messages_in_conversation(conversation_id)
+    messages.sort(key=lambda x: x.get("receivedDateTime", ""),reverse=True)
+    MY_EMAIL = get_current_user_email().lower()
+    for msg in messages:
+        sender = (
+            msg.get("from", {})
+            .get("emailAddress", {})
+        )
+        sender_email = (
+            sender.get("address", "")
+            .lower()
+            .strip()
+        )
+        if sender_email != MY_EMAIL:
+            return {
+                "name": sender.get("name"),
+                "email": sender.get("address")
+            }
+    return None
