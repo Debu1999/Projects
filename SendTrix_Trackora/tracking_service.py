@@ -1,3 +1,7 @@
+from db import get_connection,get_current_user_id
+from datetime import datetime,timedelta,timezone
+import json
+from category_service import get_settings,get_latest_category_version
 def save_ai_draft(conversation_id, draft_body, reasoning, classification):
     user_id = get_current_user_id()
     conn = get_connection()
