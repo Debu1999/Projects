@@ -20,3 +20,21 @@ def save_ai_draft(conversation_id, draft_body, reasoning, classification):
     ))
     conn.commit()
     conn.close()
+def update_ai_draft_status(conversation_id, status, new_body=None):
+    user_id = get_current_user_id()
+    conn = get_connection()
+    cursor = conn.cursor()
+    if new_body is not None:
+        cursor.execute("""
+            UPDATE followups
+            SET ai_draft_status = %s, ai_draft_body = %s, updated_at = %s
+            WHERE conversation_id = %s AND user_id = %s
+        """, (status, new_body, datetime.now(timezone.utc), conversation_id, user_id))
+    else:
+        cursor.execute("""
+            UPDATE followups
+            SET ai_draft_status = %s, updated_at = %s
+            WHERE conversation_id = %s AND user_id = %s
+        """, (status, datetime.now(timezone.utc), conversation_id, user_id))
+    conn.commit()
+    conn.close()
