@@ -193,3 +193,20 @@ def get_latest_external_responder(asn):
                 "email": sender.get("address")
             }
     return None
+def save_comment(appser_number, version_id, comment):
+    conn = get_connection()
+    cursor = conn.cursor()
+ 
+    now = datetime.now(timezone.utc).isoformat()
+ 
+    cursor.execute("""
+    INSERT INTO application_comments (
+        appser_number,
+        version_id,
+        comment,
+        created_at
+    ) VALUES (%s, %s, %s, %s)
+    """, (appser_number, version_id, comment, now))
+ 
+    conn.commit()
+    conn.close()
