@@ -132,3 +132,17 @@ def get_all_activity():
     rows = cursor.fetchall()
     conn.close()
     return rows
+def pause_tracking(conversation_id):
+    user_id = get_current_user_id()
+    conn = get_connection()
+    cursor = conn.cursor()
+ 
+    cursor.execute("""
+        UPDATE followups
+        SET status = 'CLIENT_REPLY',
+            updated_at = %s
+        WHERE conversation_id = %s AND user_id = %s
+    """, (datetime.now(timezone.utc), conversation_id, user_id))
+ 
+    conn.commit()
+    conn.close()
