@@ -55,3 +55,30 @@ def get_ai_draft(conversation_id):
         "draft_body": row[0], "reasoning": row[1],
         "classification": row[2], "analyzed_at": row[3], "status": row[4],
     }
+def update_ai_result(
+    evidence_upload_id,
+    evidence
+):
+    conn = get_connection()
+    cursor = conn.cursor()
+ 
+    cursor.execute("""
+    UPDATE evidence_uploads
+    SET
+        ocr_text = %s,
+        extracted_json = %s,
+        ai_status = %s,
+        ai_decision = %s,
+        ai_reasoning = %s
+    WHERE id = %s
+    """, (
+        evidence.get("ocr_text", ""),
+        json.dumps(evidence, indent=2),
+        "COMPLETED",
+        evidence.get("recommended_action", ""),
+        evidence.get("compliance_note", ""),
+        evidence_upload_id
+    ))
+ 
+    conn.commit()
+    conn.close()
