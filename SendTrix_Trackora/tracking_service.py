@@ -452,3 +452,93 @@ def insert_or_resume_followup(message, category_name,recipients_str):
     log_activity(message["conversationId"],"Inserted via Sync")
  
     return "inserted"
+
+def update_after_send(conversation_id, category_name):
+    user_id = get_current_user_id()
+    conn = get_connection()
+    cursor = conn.cursor()
+ 
+    now = datetime.now(timezone.utc)
+    last_followup_sent_time=now
+ 
+    cursor.execute("""
+    SELECT attempt_count,category_version FROM followups
+    WHERE conversation_id = %s AND category_name=%s AND status = 'ACTIVE' AND user_id = %s
+    """, (conversation_id, category_name, user_id))
+ 
+    row = cursor.fetchone()
+ 
+    if not row:
+        conn.close()
+        return
+ 
+    attempt_count, version = row
+    new_attempt = attempt_count + 1
+ 
+    settings = get_settings(category_name, version)
+ 
+    if not settings:
+        conn.close()
+        return
+ 
+    _, max_attempts, interval_minutes, _ = settings
+ 
+    # ===============================
+    # If reached max attempts → COMPLETE
+    # ===============================
+ 
+    if new_attempt >= max_attempts:
+        cursor.execute("""
+        UPDATE followups
+        SET attempt_count = %s,
+        status = 'COMPLETED',
+        updated_at = %s,
+        last_followup_sent_at=%s
+        WHERE conversation_id = %s
+        AND category_name=%s
+        AND category_version=%s
+        AND user_id = %s
+        """, (new_attempt, now,last_followup_sent_time, conversation_id, category_name, version, user_id))
+ 
+        conn.commit()
+        conn.close()
+ 
+        # ✅ Log attempt
+        log_activity(conversation_id, f"Followup Attempt #{new_attempt} sent")
+ 
+        # ✅ Log completion
+        log_activity(conversation_id, "Marked as Completed")
+ 
+    else:
+        # ===============================
+        # Otherwise → schedule next attempt
+        # ===============================
+ 
+        next_time = last_followup_sent_time + timedelta(minutes=interval_minutes)
+ 
+        cursor.execute("""
+        UPDATE followups
+        SET attempt_count = %s,
+        next_followup_at = %s,
+        updated_at = %s,
+        last_followup_sent_at=%s
+        WHERE conversation_id = %s
+        AND category_name=%s
+        AND category_version=%s
+        AND user_id = %s
+        """, (
+            new_attempt,
+            next_time.isoformat(),
+            now.isoformat(),
+            last_followup_sent_time.isoformat(),
+            conversation_id,
+            category_name,
+            version,
+            user_id
+        ))
+ 
+        conn.commit()
+        conn.close()
+ 
+        # ✅ Log attempt
+        log_activity(conversation_id, f"Followup Attempt #{new_attempt} sent")
