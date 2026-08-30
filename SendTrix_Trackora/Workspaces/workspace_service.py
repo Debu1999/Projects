@@ -1,9 +1,10 @@
-from db import get_connection
+from db import get_connection,get_current_user_id
 from datetime import datetime
 from Tracking.sendtrix_service import get_rows
 def create_workspace(workspace_name, description=""):
     conn = get_connection()
     cursor = conn.cursor()
+    user_id=get_current_user_id()
  
     now = datetime.now().isoformat()
  
@@ -14,14 +15,16 @@ def create_workspace(workspace_name, description=""):
             workspace_type,
             status,
             created_at,
-            updated_at
+            updated_at,
+            user_id
         )
-        VALUES (%s, %s, 'MANUAL', 'ACTIVE', %s, %s)RETURNING id
+        VALUES (%s, %s, 'MANUAL', 'ACTIVE', %s, %s,%s)RETURNING id
     """, (
         workspace_name.strip(),
         description.strip(),
         now,
-        now
+        now,
+        user_id
     ))
  
     workspace_id = cursor.fetchone()[0]
@@ -33,6 +36,7 @@ def create_workspace(workspace_name, description=""):
 def get_workspaces():
     conn = get_connection()
     cursor = conn.cursor()
+    user_id=get_current_user_id()
  
     cursor.execute("""
         SELECT
@@ -44,9 +48,9 @@ def get_workspaces():
             created_at,
             updated_at
         FROM workspaces
-        WHERE status = 'ACTIVE'
+        WHERE status = 'ACTIVE' AND user_id=%s
         ORDER BY updated_at DESC
-    """)
+    """,(user_id,))
  
     rows = cursor.fetchall()
     conn.close()
@@ -66,6 +70,7 @@ def get_workspaces():
 def rename_workspace(workspace_id, workspace_name, description=None):
     conn = get_connection()
     cursor = conn.cursor()
+    user_id=get_current_user_id()
  
     now = datetime.now().isoformat()
  
@@ -75,11 +80,12 @@ def rename_workspace(workspace_id, workspace_name, description=None):
             UPDATE workspaces
             SET workspace_name = %s,
                 updated_at = %s
-            WHERE id = %s
+            WHERE id = %s AND user_id=%s
         """, (
             workspace_name.strip(),
             now,
-            workspace_id
+            workspace_id,
+            user_id
         ))
  
     else:
@@ -89,12 +95,13 @@ def rename_workspace(workspace_id, workspace_name, description=None):
             SET workspace_name = %s,
                 description = %s,
                 updated_at = %s
-            WHERE id = %s
+            WHERE id = %s AND user_id=%s
         """, (
             workspace_name.strip(),
             description.strip(),
             now,
-            workspace_id
+            workspace_id,
+            user_id
         ))
  
     conn.commit()
@@ -107,6 +114,7 @@ def rename_workspace(workspace_id, workspace_name, description=None):
 def archive_workspace(workspace_id):
     conn = get_connection()
     cursor = conn.cursor()
+    user_id=get_current_user_id()
  
     now = datetime.now().isoformat()
  
@@ -114,10 +122,11 @@ def archive_workspace(workspace_id):
         UPDATE workspaces
         SET status = 'ARCHIVED',
             updated_at = %s
-        WHERE id = %s
+        WHERE id = %s AND user_id=%s
     """, (
         now,
-        workspace_id
+        workspace_id,
+        user_id
     ))
  
     conn.commit()
@@ -130,6 +139,7 @@ def archive_workspace(workspace_id):
 def add_conversation_to_workspace(workspace_id, conversation_id):
     conn = get_connection()
     cursor = conn.cursor()
+    user_id=get_current_user_id()
  
     now = datetime.now().isoformat()
  
@@ -139,7 +149,8 @@ def add_conversation_to_workspace(workspace_id, conversation_id):
         FROM workspaces
         WHERE id = %s
         AND status = 'ACTIVE'
-    """, (workspace_id,))
+        AND user_id=%s
+    """, (workspace_id,user_id))
  
     if not cursor.fetchone():
         conn.close()
@@ -149,8 +160,8 @@ def add_conversation_to_workspace(workspace_id, conversation_id):
     cursor.execute("""
         SELECT workspace_id
         FROM workspace_conversations
-        WHERE conversation_id = %s
-    """, (conversation_id,))
+        WHERE conversation_id = %s AND user_id=%s
+    """, (conversation_id,user_id))
  
     existing = cursor.fetchone()
  
@@ -164,13 +175,15 @@ def add_conversation_to_workspace(workspace_id, conversation_id):
         INSERT INTO workspace_conversations (
             workspace_id,
             conversation_id,
-            assigned_at
+            assigned_at,
+            user_id
         )
-        VALUES (%s, %s, %s)
+        VALUES (%s, %s, %s,%s)
     """, (
         workspace_id,
         conversation_id,
-        now
+        now,
+        user_id
     ))
  
     conn.commit()
@@ -183,6 +196,7 @@ def move_conversation_to_workspace(
 ):
     conn = get_connection()
     cursor = conn.cursor()
+    user_id=get_current_user_id()
  
     now = datetime.now().isoformat()
  
@@ -192,7 +206,8 @@ def move_conversation_to_workspace(
         FROM workspaces
         WHERE id = %s
         AND status = 'ACTIVE'
-    """, (new_workspace_id,))
+        AND user_id=%s
+    """, (new_workspace_id,user_id))
  
     if not cursor.fetchone():
         conn.close()
@@ -202,11 +217,12 @@ def move_conversation_to_workspace(
         UPDATE workspace_conversations
         SET workspace_id = %s,
             assigned_at = %s
-        WHERE conversation_id = %s
+        WHERE conversation_id = %s AND user_id=%s
     """, (
         new_workspace_id,
         now,
-        conversation_id
+        conversation_id,
+        user_id
     ))
  
     updated = cursor.rowcount > 0
@@ -218,11 +234,12 @@ def move_conversation_to_workspace(
 def remove_conversation_from_workspace(conversation_id):
     conn = get_connection()
     cursor = conn.cursor()
- 
+    user_id=get_current_user_id()
+
     cursor.execute("""
         DELETE FROM workspace_conversations
-        WHERE conversation_id = %s
-    """, (conversation_id,))
+        WHERE conversation_id = %s AND user_id=%s
+    """, (conversation_id,user_id))
  
     removed = cursor.rowcount > 0
  
@@ -233,15 +250,16 @@ def remove_conversation_from_workspace(conversation_id):
 def get_workspace_conversations(workspace_id):
     conn = get_connection()
     cursor = conn.cursor()
+    user_id=get_current_user_id()
  
     cursor.execute("""
         SELECT
             wc.conversation_id,
             wc.assigned_at
         FROM workspace_conversations wc
-        WHERE wc.workspace_id = %s
+        WHERE wc.workspace_id = %s AND wc.user_id=%s
         ORDER BY wc.assigned_at DESC
-    """, (workspace_id,))
+    """, (workspace_id,user_id))
  
     rows = cursor.fetchall()
     conn.close()
@@ -266,7 +284,7 @@ def get_workspace_rows(workspace_id):
         for item in workspace_conversations
     }
  
-    print("===================================")
+    '''print("===================================")
     print("WORKSPACE ID:", workspace_id)
     print("WORKSPACE CONVERSATIONS:", workspace_conversations)
     print("WORKSPACE CONVERSATION IDS:", conversation_ids)
@@ -281,7 +299,7 @@ def get_workspace_rows(workspace_id):
             type(row[13])
         )
  
-    print("===================================")
+    print("===================================")'''
  
     filtered_rows = [
         row
@@ -289,37 +307,40 @@ def get_workspace_rows(workspace_id):
         if str(row[13]) in conversation_ids
     ]
  
-    print(
+    '''print(
         "MATCHED WORKSPACE ROWS:",
         len(filtered_rows)
-    )
+    )'''
  
     return filtered_rows
 def get_workspace_conversation_ids(workspace_id):
     conn = get_connection()
     cursor = conn.cursor()
+    user_id=get_current_user_id()
  
     cursor.execute("""
         SELECT conversation_id
         FROM workspace_conversations
-        WHERE workspace_id = %s
-    """, (workspace_id,))
+        WHERE workspace_id = %s AND user_id=%s
+    """, (workspace_id,user_id))
  
     rows = cursor.fetchall()
     conn.close()
  
     return [row[0] for row in rows]
+
 def get_workspace_followup_conversation_ids(workspace_id):
     conn = get_connection()
     cursor = conn.cursor()
+    user_id=get_current_user_id()
  
     cursor.execute("""
         SELECT f.conversation_id
         FROM followups f
         INNER JOIN workspace_conversations wc
             ON f.conversation_id = wc.conversation_id
-        WHERE wc.workspace_id = %s
-    """, (workspace_id,))
+        WHERE wc.workspace_id = %s AND wc.user_id=%s AND f.user_id=%s
+    """, (workspace_id,user_id,user_id))
  
     rows = cursor.fetchall()
     conn.close()

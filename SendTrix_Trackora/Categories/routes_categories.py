@@ -107,12 +107,6 @@ def update_category():
     })
 @app.route("/save_category", methods=["POST"])
 def save_category():
-    from db import get_current_user_id
-    '''print("Form Recieved")
-    print(request.form)
-    print("--------")
-    return "Check terminal"'''
-    user_id = get_current_user_id()
     category_name = request.form.get("category_name", "").strip()
     followup_mode = request.form.get("followup_mode", "manual")
     followup_text = request.form.get("followup_text", "").strip()
@@ -139,7 +133,7 @@ def save_category():
             followup_mode,
             selected_draft_ids
         )
-        token=get_graph_token(user_id)
+        token=get_graph_token()
         headers={
             "Authorization":f"Bearer {token}",
             "Content-Type":"application/json"

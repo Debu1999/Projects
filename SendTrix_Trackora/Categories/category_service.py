@@ -266,8 +266,9 @@ def get_all_categories():
     cursor.execute("""
     SELECT category_name, version
     FROM settings
+    WHERE user_id=%s
     ORDER BY category_name, version DESC
-    """)
+    """,(user_id,))
  
     rows = cursor.fetchall()
     conn.close()

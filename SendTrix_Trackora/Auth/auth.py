@@ -64,7 +64,8 @@ def get_login_url():
  
     return app.get_authorization_request_url(
         SCOPES,
-        redirect_uri=REDIRECT_URI
+        redirect_uri=REDIRECT_URI,
+        prompt="select_account" # We can use the value "login" to get sign-in again
     )
  
 def authenticate_from_code(code):

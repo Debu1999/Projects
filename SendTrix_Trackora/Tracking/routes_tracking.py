@@ -1,5 +1,6 @@
 from flask_server import app
 from Tracking.sendtrix_service import get_rows,get_dashboard_counts
+from Auth.routes_auth import login_required
 from Tracking.tracking_service import (
     get_unread_replies,
     log_activity,
@@ -20,6 +21,7 @@ from datetime import datetime,timezone
 from flask import render_template, redirect, url_for, flash, request
 
 @app.route("/")
+@login_required
 def dashboard():
     search=request.args.get("search","")
     rows=get_rows()
@@ -41,6 +43,7 @@ def dashboard():
         search=search
     )
 @app.route("/run")
+@login_required
 def run_process():
     try:
         get_graph_token()
@@ -52,12 +55,14 @@ def run_process():
     flash("Followup process executed successfully.")
     return redirect(url_for("dashboard"))
 @app.route("/sync")
+@login_required
 def run_sync():
     sync()
     #debug_followups()
     flash("Mailbox sync completed successfully.")
     return redirect(url_for("dashboard"))
 @app.route("/refresh")
+@login_required
 def refresh_process():
  
     try:

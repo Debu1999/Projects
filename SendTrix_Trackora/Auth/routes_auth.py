@@ -1,6 +1,16 @@
 from flask_server import app
 from .auth import get_login_url,authenticate_from_code
-from flask import redirect,flash,request,url_for,session
+from flask import redirect,flash,request,url_for,session,render_template
+
+from functools import wraps
+
+def login_required(view_function):
+    @wraps(view_function)
+    def wrapper(*args, **kwargs):
+        if not session.get("user_id"):
+            return redirect(url_for("login_microsoft"))
+        return view_function(*args, **kwargs)
+    return wrapper
 @app.route("/login")
 def login_microsoft():
  
@@ -60,6 +70,9 @@ def current_user():
 def logout():
     session.clear()
  
-    flash("You have been logged out.")
+    #flash("You have been logged out.")
  
-    return redirect(url_for("login_microsoft"))
+    return redirect(url_for("logged_out"))
+@app.route("/logged-out")
+def logged_out():
+    return render_template("logged_out.html")

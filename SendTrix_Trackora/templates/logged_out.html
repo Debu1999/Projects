@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Signed out — SendTrix</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --navy: #1F3864;
+    --blue: #2F5597;
+    --blue-soft: #EAF0FB;
+    --paper: #F6F7FA;
+    --line: #E2E6EE;
+    --ink: #24304A;
+    --muted: #6B7A99;
+  }
+
+  *{ box-sizing: border-box; }
+
+  body{
+    margin:0;
+    min-height:100vh;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    background:
+      radial-gradient(1100px 600px at 15% -10%, var(--blue-soft) 0%, transparent 60%),
+      radial-gradient(900px 500px at 110% 110%, #DCE5F7 0%, transparent 55%),
+      var(--paper);
+    font-family: 'Inter', system-ui, sans-serif;
+    color: var(--ink);
+    padding: 24px;
+  }
+
+  .card{
+    width: 100%;
+    max-width: 440px;
+    background: #fff;
+    border: 1px solid var(--line);
+    border-radius: 20px;
+    padding: 48px 40px 40px;
+    text-align: center;
+    box-shadow: 0 1px 2px rgba(31,56,100,0.04), 0 24px 48px -20px rgba(31,56,100,0.18);
+    animation: rise 0.5s cubic-bezier(.2,.8,.2,1) both;
+  }
+
+  @keyframes rise{
+    from{ opacity:0; transform: translateY(10px); }
+    to{ opacity:1; transform: translateY(0); }
+  }
+
+  .mark{
+    width: 64px;
+    height: 64px;
+    margin: 0 auto 28px;
+    border-radius: 50%;
+    background: var(--blue-soft);
+    display:flex;
+    align-items:center;
+    justify-content:center;
+  }
+
+  .mark svg{ width: 30px; height: 30px; display:block; }
+
+  .mark path{
+    fill:none;
+    stroke: var(--blue);
+    stroke-width: 2.5;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+    stroke-dasharray: 40;
+    stroke-dashoffset: 40;
+    animation: draw 0.5s 0.35s cubic-bezier(.2,.8,.2,1) forwards;
+  }
+
+  @media (prefers-reduced-motion: reduce){
+    .card{ animation: none; }
+    .mark path{ animation: none; stroke-dashoffset: 0; }
+  }
+
+  @keyframes draw{ to{ stroke-dashoffset: 0; } }
+
+  h1{
+    font-family: 'Space Grotesk', sans-serif;
+    font-weight: 600;
+    font-size: 24px;
+    letter-spacing: -0.01em;
+    color: var(--navy);
+    margin: 0 0 10px;
+  }
+
+  p{
+    font-size: 15px;
+    line-height: 1.55;
+    color: var(--muted);
+    margin: 0 0 30px;
+  }
+
+  .btn{
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    background: var(--navy);
+    color: #fff;
+    text-decoration: none;
+    font-family: 'Inter', sans-serif;
+    font-weight: 600;
+    font-size: 14.5px;
+    padding: 13px 26px;
+    border-radius: 10px;
+    transition: background 0.15s ease, transform 0.15s ease;
+  }
+
+  .btn:hover{ background: var(--blue); transform: translateY(-1px); }
+  .btn:focus-visible{ outline: 2px solid var(--blue); outline-offset: 3px; }
+
+  .btn svg{ width: 15px; height: 15px; }
+
+  .foot{
+    margin-top: 26px;
+    font-size: 12.5px;
+    color: #9AA6BE;
+    letter-spacing: 0.01em;
+  }
+</style>
+<script>
+  window.addEventListener("pageshow", function (event) {
+    if (event.persisted) {
+      window.location.reload();
+    }
+  });
+</script>
+</head>
+<body>
+
+  <div class="card">
+    <div class="mark">
+      <svg viewBox="0 0 24 24">
+        <path d="M5 13l4 4L19 7" />
+      </svg>
+    </div>
+
+    <h1>You're signed out</h1>
+    <p>Your SendTrix session has ended. Your mailbox connection is closed until you sign back in.</p>
+
+    <a class="btn" href="/login">
+      Log back in
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M5 12h13M13 6l6 6-6 6" />
+      </svg>
+    </a>
+
+    <div class="foot">SendTrix — mail automation for Outlook</div>
+  </div>
+
+</body>
+</html>

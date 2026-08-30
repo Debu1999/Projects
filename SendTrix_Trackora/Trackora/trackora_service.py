@@ -117,7 +117,7 @@ def get_send_mail_flag(recommended_action):
  
     return 0
 def insert_snapshot_bulk(cursor, upload_id, row):
- 
+    user_id=get_current_user_id()
     now = datetime.now(timezone.utc).isoformat()
  
     if not row.get("appser_number"):
@@ -141,9 +141,10 @@ def insert_snapshot_bulk(cursor, upload_id, row):
         remediation_due_date,
         exception_reason,
         status,
-        created_at
+        created_at,
+        user_id
     )
-    VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, 'ACTIVE', %s)
+    VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, 'ACTIVE', %s,%s)
     """, (
         upload_id,
         row.get("appser_number"),
@@ -160,7 +161,8 @@ def insert_snapshot_bulk(cursor, upload_id, row):
         row.get("compliance_mode", "FREQUENCY"),
         row.get("remediation_due_date", ""),
         row.get("exception_reason", ""),
-        now
+        now,
+        user_id
     ))
 
 def insert_raw_snapshot_bulk(
@@ -168,6 +170,7 @@ def insert_raw_snapshot_bulk(
     upload_id,
     row
 ):
+    user_id=get_current_user_id()
  
     import json
     from datetime import datetime, timezone
@@ -185,26 +188,29 @@ def insert_raw_snapshot_bulk(
         upload_id,
         appser_number,
         row_data,
-        created_at
+        created_at,
+        user_id
     )
-    VALUES (%s, %s, %s, %s)
+    VALUES (%s, %s, %s, %s,%s)
     """, (
         upload_id,
         appser_number,
         json.dumps(row,default=str),
-        now
+        now,
+        user_id
     ))
 def get_latest_external_responder(asn):
     from graph_client import get_current_user_email,get_messages_in_conversation
  
     conn = get_connection()
     cursor = conn.cursor()
+    user_id=get_current_user_id()
  
     cursor.execute("""
     SELECT upload_id
     FROM master_control
-    WHERE is_active = 1
-    """)
+    WHERE is_active = 1 AND user_id=%s
+    """,(user_id,))
  
     row = cursor.fetchone()
  
@@ -218,9 +224,11 @@ def get_latest_external_responder(asn):
     FROM application_analysis
     WHERE upload_id = %s
     AND appser_number = %s
+    AND user_id=%s
     """, (
         upload_id,
-        asn
+        asn,
+        user_id
     ))
  
     conv_row = cursor.fetchone()
@@ -271,6 +279,7 @@ def save_comment(appser_number, version_id, comment):
 def get_snapshot_by_upload(upload_id):
  
     import json
+    user_id=get_current_user_id()
  
     conn = get_connection()
     cursor = conn.cursor()
@@ -279,7 +288,8 @@ def get_snapshot_by_upload(upload_id):
     SELECT appser_number, row_data
     FROM applications_raw_data
     WHERE upload_id = %s
-    """, (upload_id,))
+    AND user_id=%s
+    """, (upload_id,user_id))
  
     rows = cursor.fetchall()
  
@@ -308,11 +318,12 @@ def get_snapshot_by_upload(upload_id):
     return result
 def create_comparison(cursor,master_upload_id, target_upload_id,master_count,target_count):
     now = datetime.now(timezone.utc).isoformat()
+    user_id=get_current_user_id()
  
     cursor.execute("""
-        INSERT INTO comparison_logs (from_upload_id,to_upload_id,created_at,master_count,target_count)
-        VALUES (%s, %s, %s, %s, %s)
-    """, (master_upload_id,target_upload_id, now,master_count,target_count))
+        INSERT INTO comparison_logs (from_upload_id,to_upload_id,created_at,master_count,target_count,user_id)
+        VALUES (%s, %s, %s, %s, %s,%s)
+    """, (master_upload_id,target_upload_id, now,master_count,target_count,user_id))
  
     return cursor.fetchone()[0]
 def update_comparison_summary(
@@ -321,6 +332,7 @@ def update_comparison_summary(
     modified_count,
     missing_count
 ):
+    user_id=get_current_user_id()
     conn = get_connection()
     cursor = conn.cursor()
  
@@ -330,12 +342,13 @@ def update_comparison_summary(
             added_count = %s,
             modified_count = %s,
             missing_count = %s
-        WHERE id = %s
+        WHERE id = %s AND user_id=%s
     """, (
         added_count,
         modified_count,
         missing_count,
-        comparison_id
+        comparison_id,
+        user_id
     ))
  
     conn.commit()
@@ -344,15 +357,18 @@ def comparison_exists(master_upload_id, target_upload_id):
  
     conn = get_connection()
     cursor = conn.cursor()
+    user_id=get_current_user_id()
  
     cursor.execute("""
         SELECT id
         FROM comparison_logs
         WHERE from_upload_id = %s
         AND to_upload_id = %s
+        AND user_id=%s
     """, (
         master_upload_id,
-        target_upload_id
+        target_upload_id,
+        user_id
     ))
  
     row = cursor.fetchone()
@@ -363,6 +379,7 @@ def comparison_exists(master_upload_id, target_upload_id):
 
 def run_comparison(master_upload_id, target_upload_id):
     from datetime import datetime, timezone
+    user_id=get_current_user_id()
 
     print("MASTER_UPLOAD_ID:",master_upload_id)
     print("TARGET_UPLOAD_ID:",target_upload_id)
@@ -412,7 +429,8 @@ def run_comparison(master_upload_id, target_upload_id):
                 "New Record",
                 "ADDED",
                 now,
-                json.dumps(new_row)
+                json.dumps(new_row),
+                user_id
             ))
             added += 1
         # =========================
@@ -435,7 +453,8 @@ def run_comparison(master_upload_id, target_upload_id):
                         new_value,
                         "MODIFIED",
                         now,
-                        None
+                        None,
+                        user_id
                     ))
                     modified += 1
     # 🔹 MISSING
@@ -443,7 +462,7 @@ def run_comparison(master_upload_id, target_upload_id):
     for asn in old_data:
         if asn not in new_data:
             changes.append((
-                comparison_id, asn, "-", "Exists", "Missing", "MISSING", now,None
+                comparison_id, asn, "-", "Exists", "Missing", "MISSING", now,None,user_id
             ))
             missing += 1
  
@@ -458,9 +477,10 @@ def run_comparison(master_upload_id, target_upload_id):
             new_value,
             change_type,
             created_at,
-            row_data
+            row_data,
+            user_id
         )
-        VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
+        VALUES (%s, %s, %s, %s, %s, %s, %s, %s,%s)
     """, changes)
  
     conn.commit()
@@ -474,14 +494,16 @@ def get_comparison_files():
  
     conn = get_connection()
     cursor = conn.cursor()
+    user_id=get_current_user_id()
  
     cursor.execute("""
     SELECT
         id,
         created_at
     FROM comparison_logs
+    WHERE user_id=%s
     ORDER BY id DESC
-    """)
+    """,(user_id,))
  
     rows = cursor.fetchall()
  
@@ -503,12 +525,13 @@ def approve_change(change_id):
  
     conn = get_connection()
     cursor = conn.cursor()
+    user_id=get_current_user_id()
  
     cursor.execute("""
     UPDATE comparison_changes
     SET approval_status = 'APPROVED'
-    WHERE id = %s
-    """, (change_id,))
+    WHERE id = %s AND user_id=%s
+    """, (change_id,user_id))
  
     conn.commit()
     conn.close()
@@ -517,12 +540,13 @@ def ignore_change_db(change_id):
  
     conn = get_connection()
     cursor = conn.cursor()
+    user_id=get_current_user_id()
  
     cursor.execute("""
     UPDATE comparison_changes
     SET approval_status = 'IGNORED'
-    WHERE id = %s
-    """, (change_id,))
+    WHERE id = %s AND user_id=%s
+    """, (change_id,user_id))
  
     conn.commit()
     conn.close()
@@ -531,12 +555,13 @@ def apply_all_changes_db(comparison_id):
  
     conn = get_connection()
     cursor = conn.cursor()
+    user_id=get_current_user_id()
  
     cursor.execute("""
     UPDATE comparison_changes
     SET approval_status = 'APPROVED'
-    WHERE comparison_id = %s
-    """, (comparison_id,))
+    WHERE comparison_id = %s AND user_id=%s
+    """, (comparison_id,user_id))
  
     conn.commit()
     conn.close()
@@ -545,12 +570,13 @@ def ignore_all_changes_db(comparison_id):
  
     conn = get_connection()
     cursor = conn.cursor()
+    user_id=get_current_user_id()
  
     cursor.execute("""
     UPDATE comparison_changes
     SET approval_status = 'IGNORED'
-    WHERE comparison_id = %s
-    """, (comparison_id,))
+    WHERE comparison_id = %s AND user_id=%s
+    """, (comparison_id,user_id))
  
     conn.commit()
     conn.close()

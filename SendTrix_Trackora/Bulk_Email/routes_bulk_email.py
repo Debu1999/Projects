@@ -1,4 +1,5 @@
 from flask_server import app
+from Auth.routes_auth import login_required
 from Categories.category_service import (
     get_template_folders,
     get_all_categories,
@@ -14,6 +15,7 @@ from template_engine import extract_placeholders,render_dynamic
 from openpyxl import load_workbook
 
 @app.route("/bulk_email")
+@login_required
 def bulk_email():
     folders=get_template_folders()
     drafts = []
@@ -26,6 +28,7 @@ def bulk_email():
     return render_template("bulk_email.html", drafts=drafts,bulk_runs=bulk_runs,categories=categories)
 
 @app.route("/send_bulk_from_draft", methods=["POST"])
+@login_required
 def send_bulk_from_draft_route():
  
     draft_id = request.form.get("draft_id")

@@ -7,6 +7,7 @@ from Categories import routes_categories
 from Tracking import routes_tracking
 from Trackora import routes_trackora
 from Workspaces import routes_workspaces
+from Templates_Tab import routes_templates
 
 
 

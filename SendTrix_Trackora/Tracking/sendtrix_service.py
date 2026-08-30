@@ -70,20 +70,21 @@ def get_rows():
 def get_dashboard_counts():
     conn = get_connection()
     cursor = conn.cursor()
+    user_id=get_current_user_id()
  
-    cursor.execute("SELECT COUNT(*) FROM followups WHERE status = 'ACTIVE'")
+    cursor.execute("SELECT COUNT(*) FROM followups WHERE status = 'ACTIVE' AND user_id=%s",(user_id,))
     active = cursor.fetchone()[0]
  
-    cursor.execute("SELECT COUNT(*) FROM followups WHERE status = 'COMPLETED'")
+    cursor.execute("SELECT COUNT(*) FROM followups WHERE status = 'COMPLETED' AND user_id=%s",(user_id,))
     completed = cursor.fetchone()[0]
  
-    cursor.execute("SELECT COUNT(*) FROM followups WHERE status = 'CLIENT_REPLY'")
+    cursor.execute("SELECT COUNT(*) FROM followups WHERE status = 'CLIENT_REPLY' AND user_id=%s",(user_id,))
     client_reply = cursor.fetchone()[0]
 
-    cursor.execute("SELECT COUNT(*) FROM followups WHERE status = 'MANUAL_PAUSED'")
+    cursor.execute("SELECT COUNT(*) FROM followups WHERE status = 'MANUAL_PAUSED' AND user_id=%s",(user_id,))
     manual_pause = cursor.fetchone()[0]
  
-    cursor.execute("SELECT COUNT(*) FROM followups")
+    cursor.execute("SELECT COUNT(*) FROM followups WHERE user_id=%s",(user_id,))
     total = cursor.fetchone()[0]
  
     conn.close()

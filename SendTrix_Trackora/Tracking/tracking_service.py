@@ -90,14 +90,16 @@ def update_ai_result(
 def log_activity(conversation_id, action):
     conn = get_connection()
     cursor = conn.cursor()
+    user_id=get_current_user_id()
  
     cursor.execute("""
-        INSERT INTO activity_logs (conversation_id, action, created_at)
-        VALUES (%s, %s, %s)
+        INSERT INTO activity_logs (conversation_id, action, created_at,user_id)
+        VALUES (%s, %s, %s,%s)
     """, (
         conversation_id,
         action,
-        datetime.now(timezone.utc).isoformat()
+        datetime.now(timezone.utc).isoformat(),
+        user_id
     ))
  
     conn.commit()
@@ -121,6 +123,7 @@ def get_activity(conversation_id):
 def get_all_activity():
     conn = get_connection()
     cursor = conn.cursor()
+    user_id=get_current_user_id()
  
     cursor.execute("""
         SELECT 
@@ -130,8 +133,9 @@ def get_all_activity():
         FROM activity_logs a
         JOIN followups f 
             ON a.conversation_id = f.conversation_id
+        WHERE a.user_id=%s AND f.user_id=%s
         ORDER BY a.created_at DESC
-    """)
+    """,(user_id,user_id))
  
     rows = cursor.fetchall()
     conn.close()
