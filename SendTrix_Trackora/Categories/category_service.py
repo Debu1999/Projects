@@ -4,11 +4,12 @@ from datetime import datetime,timezone
 def get_template_for_attempt(category_name,version,attempt_number):
     conn = get_connection()
     cursor = conn.cursor()
+    user_id=get_current_user_id()
     cursor.execute("""
         SELECT draft_id FROM category_templates
-        WHERE category_name = %s AND version=%s 
+        WHERE category_name = %s AND version=%s AND user_id=%s 
         ORDER BY order_number ASC
-    """, (category_name,version))
+    """, (category_name,version,user_id))
     rows = cursor.fetchall()
     conn.close()
  
