@@ -1,33 +1,27 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Categories Dashboard</title>
- 
+{% extends "base.html" %}
+
+{% block content %}
 <style>
  
-body{
+.categories-page{
 font-family: Arial, Helvetica, sans-serif;
-margin:0;
 background:#f5f6fa;
 }
  
-.container{
+.cat-container{
 display:flex;
-height:100vh;
+min-height:600px;
 }
  
 /* LEFT PANEL */
  
-.sidebar{
+.cat-sidebar{
 width:260px;
 background:white;
 border-right:1px solid #ddd;
-overflow-y:auto;
 }
  
-.sidebar h2{
+.cat-sidebar h2{
 padding:18px;
 margin:0;
 border-bottom:1px solid #eee;
@@ -65,11 +59,10 @@ font-weight:bold;
 .details{
 flex:1;
 padding:30px;
-overflow-y:auto;
 min-width: 0;
 }
  
-.header{
+.cat-header{
 display:flex;
 justify-content:space-between;
 align-items:center;
@@ -285,21 +278,12 @@ cursor:pointer;
 }
  
 </style>
-<script>
-  window.addEventListener("pageshow", function (event) {
-    if (event.persisted) {
-      window.location.reload();
-    }
-  });
-</script>
-</head>
- 
-<body>
 
+<div class="categories-page">
+
+<div class="cat-container">
  
-<div class="container">
- 
-<div class="sidebar">
+<div class="cat-sidebar">
 <h2>Categories</h2>
 <div id="categoryList"></div>
 </div>
@@ -309,6 +293,8 @@ cursor:pointer;
 <p class="empty">Click a category to view details</p>
 </div>
  
+</div>
+
 </div>
  
 <div id="editModal" class="modal">
@@ -518,7 +504,7 @@ templatesHTML='<div class="empty">No templates</div>'
  
 const html=`
  
-<div class="header">
+<div class="cat-header">
 <h2>${name}(v${version})</h2>
 ${isEditable ? `<button class="edit-btn" onclick="openEdit('${name}',${version})">Edit</button>`:`<button class="edit-btn" onclick="cloneCategory('${name}',${version})">Clone Version</button>`}
 </div>
@@ -849,7 +835,4 @@ document.addEventListener("DOMContentLoaded",function(){
 })
  
 </script>
- 
-</body>
-</html>
- 
+{% endblock %}

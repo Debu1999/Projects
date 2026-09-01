@@ -1,0 +1,36 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="page-header-row">
+    <div class="header">Audit Report{% if workspace_name %} — {{ workspace_name }}{% endif %}</div>
+</div>
+
+<div class="kpi-container" style="max-width:600px;">
+    <div class="kpi-card" style="text-align:left;">
+        <h3 style="margin-bottom:15px;">Generate Report</h3>
+        <p style="font-size:13px; color:#777; margin-bottom:15px;">
+            {% if workspace_name %}
+                Includes only conversations assigned to <strong>{{ workspace_name }}</strong>.
+            {% else %}
+                Includes all conversations. Leave dates blank for all-time.
+            {% endif %}
+        </p>
+
+        <form method="GET" action="{{ url_for('reports.audit_report_download') }}">
+            {% if workspace_id %}
+            <input type="hidden" name="workspace_id" value="{{ workspace_id }}">
+            {% endif %}
+
+            <label style="font-size:13px; font-weight:600;">Start Date</label>
+            <input type="date" name="start_date" style="width:100%; padding:8px; margin:8px 0 15px; border:1px solid #ddd; border-radius:6px;">
+
+            <label style="font-size:13px; font-weight:600;">End Date</label>
+            <input type="date" name="end_date" style="width:100%; padding:8px; margin:8px 0 20px; border:1px solid #ddd; border-radius:6px;">
+
+            <button type="submit" class="primary-btn">
+                <i class="fa-solid fa-file-excel"></i> Download Audit Report
+            </button>
+        </form>
+    </div>
+</div>
+{% endblock %}

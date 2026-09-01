@@ -71,9 +71,14 @@ def nl_query_download():
     )
 @app.route("/applications")
 def applications():
+    return render_template("trackora_landing.html", title="")
+
+
+@app.route("/applications/cots")
+def applications_cots():
     conn = get_connection()
     cursor = conn.cursor()
- 
+
     # Get all uploads
     cursor.execute("""
         SELECT id, file_name, created_at
@@ -81,20 +86,20 @@ def applications():
         ORDER BY created_at DESC
     """)
     rows = cursor.fetchall()
- 
+
     # Get current master
     cursor.execute("""
-        SELECT upload_id 
-        FROM master_control 
+        SELECT upload_id
+        FROM master_control
         WHERE is_active = 1
         LIMIT 1
     """)
     row = cursor.fetchone()
- 
+
     master_id = row[0] if row else None
- 
+
     conn.close()
- 
+
     uploads = []
     for r in rows:
         uploads.append({
@@ -102,12 +107,12 @@ def applications():
             "file_name": r[1],
             "created_at": r[2]
         })
- 
+
     return render_template(
         "cots.html",
         uploads=uploads,
-        master_exists = master_id is not None,
-        master_id = master_id,
+        master_exists=master_id is not None,
+        master_id=master_id,
         title=""
     )
 

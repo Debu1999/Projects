@@ -9,10 +9,6 @@
 <p style="color:#6b7280;">
     {{ workspace.description }}
 </p>
-
-<button class="secondary-btn" onclick="startTour()">
-Take a Quick Tour
-</button>
  
 <script>
 function startTour(){
@@ -176,6 +172,11 @@ input:checked + .toggle-slider:before {
             <i class="fa-solid fa-folder-tree"></i>
             Assign to Workspace
         </button>
+        <a href="{{ url_for('reports.audit_report_page', workspace_id=workspace.id) }}">
+            <button class="secondary-btn">
+                <i class="fa-solid fa-file-shield"></i> Audit Report
+            </button>
+        </a>
     </div>
     <div>
         <a href="/login"><button class="btn btn-primary" data-intro="Connect to your mailbox" data-step="2"><i class="fa-brands fa-microsoft"></i>Connect Outlook</button></a>

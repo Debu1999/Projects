@@ -1,12 +1,6 @@
 {% extends "base.html" %}
 {% block content %}
  
-<h2 class="page-title">Followup Dashboard</h2>
-
-<button class="secondary-btn" onclick="startTour()">
-Take a Quick Tour
-</button>
- 
 <script>
 function startTour(){
 introJs().start();
@@ -127,10 +121,29 @@ input:checked + .toggle-slider {
 input:checked + .toggle-slider:before {
     transform: translateX(20px);
 }
+.dashboard-header-row{
+display:flex;
+justify-content:space-between;
+align-items:center;
+margin-bottom:20px;
+}
 
 </style>
  
-<a href="{{ url_for('logout') }}" class="btn btn-danger">Logout</a>
+<div class="dashboard-header-row">
+    <h2 class="page-title" style="margin-bottom:0;">Followup Dashboard</h2>
+    <div style="display:flex; gap:10px; align-items:center;">
+        <button class="secondary-btn" onclick="startTour()">
+            Take a Quick Tour
+        </button>
+        <a href="{{ url_for('reports.audit_report_page') }}">
+            <button class="secondary-btn">
+                <i class="fa-solid fa-file-shield"></i> Audit Report
+            </button>
+        </a>
+    </div>
+</div>
+<!-- KPI SECTION -->
 <!-- KPI SECTION -->
 <div class="kpi-container">
     <div class="kpi-card" data-intro="This here tells your current active followups" data-step="7">

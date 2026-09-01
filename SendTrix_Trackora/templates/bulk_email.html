@@ -1,8 +1,6 @@
-<!DOCTYPE html>
-<html>
-<head>
-<title>Bulk Email</title>
- 
+{% extends "base.html" %}
+
+{% block content %}
 <style>
 .sending-overlay{
 position:fixed;
@@ -41,28 +39,24 @@ animation:spin 1s linear infinite;
 100%{transform:rotate(360deg);}
 }
  
- 
-body{
+.bulk-email-page{
 font-family: Arial, sans-serif;
-background:#f4f6f9;
-margin:0;
-padding:30px;
 }
  
-.header{
+.bulk-email-page .header{
 display:flex;
 justify-content:space-between;
 align-items:center;
 margin-bottom:30px;
 }
  
-.cards{
+.bulk-email-page .cards{
 display:flex;
 gap:20px;
 margin-bottom:30px;
 }
  
-.stat-card{
+.bulk-email-page .stat-card{
 flex:1;
 background:white;
 padding:20px;
@@ -71,19 +65,19 @@ box-shadow:0 3px 10px rgba(0,0,0,0.08);
 text-align:center;
 }
  
-.stat-card h3{
+.bulk-email-page .stat-card h3{
 margin:0;
 font-size:14px;
 color:#555;
 }
  
-.stat-card p{
+.bulk-email-page .stat-card p{
 font-size:28px;
 margin-top:10px;
 font-weight:bold;
 }
  
-.btn{
+.bulk-email-page .btn{
 background:#0078d4;
 color:white;
 padding:10px 16px;
@@ -92,28 +86,30 @@ border-radius:4px;
 cursor:pointer;
 }
  
-.btn:hover{
+.bulk-email-page .btn:hover{
 background:#005a9e;
 }
  
-table{
+.bulk-email-page table{
 width:100%;
 border-collapse:collapse;
 background:white;
 box-shadow:0 3px 10px rgba(0,0,0,0.08);
 }
  
-th,td{
+.bulk-email-page th,
+.bulk-email-page td{
 padding:12px;
 border-bottom:1px solid #eee;
 text-align:left;
 }
  
-th{
-background:#f0f2f5;
+.bulk-email-page th{
+background:#1F4E78;
+color:white;
 }
  
-.modal{
+.bulk-email-page .modal{
 display:none;
 position:fixed;
 z-index:1000;
@@ -125,7 +121,7 @@ background:rgba(0,0,0,0.4);
 overflow:auto;
 }
  
-.modal-content{
+.bulk-email-page .modal-content{
 background:white;
 width:600px;
 margin:60px auto;
@@ -133,20 +129,21 @@ padding:25px;
 border-radius:8px;
 }
  
-.close{
+.bulk-email-page .close{
 float:right;
 font-size:20px;
 cursor:pointer;
 }
  
-select,input[type="file"]{
+.bulk-email-page select,
+.bulk-email-page input[type="file"]{
 width:100%;
 padding:8px;
 margin-top:8px;
 margin-bottom:20px;
 }
  
-.alert{
+.bulk-email-page .alert{
 padding:10px;
 background:#ffe0e0;
 color:#a10000;
@@ -154,23 +151,15 @@ margin-bottom:15px;
 border-radius:4px;
 }
  
-.success{
+.bulk-email-page .success{
 background:#e0ffe8;
 color:#007a2f;
 }
  
 </style>
-<script>
-  window.addEventListener("pageshow", function (event) {
-    if (event.persisted) {
-      window.location.reload();
-    }
-  });
-</script>
-</head>
- 
-<body>
- 
+
+<div class="bulk-email-page">
+
 <h2>Bulk Email Dashboard</h2>
  
 <div class="header">
@@ -324,13 +313,15 @@ Upload & Preview
  
 </div>
 </div>
-<div id="sendingOverlay" class="sending-overlay" style="display:none;">
+<div id="bulkSendingOverlay" class="sending-overlay" style="display:none;">
     <div class="sending-box">
         <div class="spinner"></div>
         <h2>Sending Emails...</h2>
         <p>Please don't refresh or close this page.</p>
-        <p id="sendingStatus">Preparing...</p>
+        <p id="bulkSendingStatus">Preparing...</p>
     </div>
+</div>
+
 </div>
  
 <script>
@@ -385,7 +376,7 @@ btn.innerText="Processing...";
 btn.disabled=true;
 
 //Show loading Overlay
-showLoading("Uploading Excel...")
+showBulkLoading("Uploading Excel...")
  
 });
  
@@ -396,17 +387,15 @@ if(e.target===bulkModal){
 closeModal();
 }
 }
-function showLoading(message="Processing..."){
-    document.getElementById("sendingStatus").innerText = message;
-    document.getElementById("sendingOverlay").style.display = "flex";
+function showBulkLoading(message="Processing..."){
+    document.getElementById("bulkSendingStatus").innerText = message;
+    document.getElementById("bulkSendingOverlay").style.display = "flex";
 }
  
-function hideLoading(){
-    document.getElementById("sendingOverlay").style.display = "none";
+function hideBulkLoading(){
+    document.getElementById("bulkSendingOverlay").style.display = "none";
 }
  
  
 </script>
- 
-</body>
-</html>
+{% endblock %}

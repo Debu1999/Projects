@@ -8,8 +8,9 @@ from Tracking import routes_tracking
 from Trackora import routes_trackora
 from Workspaces import routes_workspaces
 from Templates_Tab import routes_templates
+from Tracking.routes_reports import reports_bp
 
-
+app.register_blueprint(reports_bp)
 
 if __name__ == "__main__":
     init_db()

@@ -871,6 +871,12 @@ transform:translateY(-1px);
 box-shadow:0 5px 15px rgba(37,99,235,.35);
  
 }
+.secondary-btn.active-tab {
+    background: #1F4E78;
+    color: white;
+    border-color: #1F4E78;
+    box-shadow: 0 2px 6px rgba(31,78,120,0.3);
+}
  
  
  
@@ -888,10 +894,10 @@ box-shadow:0 5px 15px rgba(37,99,235,.35);
  
 <!-- Tabs -->
 <div style="margin-bottom:20px;">
-    <button class="secondary-btn" onclick="showTab('uploads')">Uploads</button>
-    <button class="secondary-btn" onclick="showTab('master')">Master</button>
-    <button class="secondary-btn" onclick="showTab('comparison')">Comparison</button>
-    <button class="secondary-btn" onclick="showTab('actions')">Action Templates</button>
+    <button id="tabBtn-uploads" class="secondary-btn" onclick="showTab('uploads')">Uploads</button>
+    <button id="tabBtn-master" class="secondary-btn" onclick="showTab('master')">Master</button>
+    <button id="tabBtn-comparison" class="secondary-btn" onclick="showTab('comparison')">Comparison</button>
+    <button id="tabBtn-actions" class="secondary-btn" onclick="showTab('actions')">Action Templates</button>
 </div>
  
 <!-- UPLOAD TAB -->
@@ -1581,6 +1587,10 @@ if(actionsTab){
 
 document.getElementById(tab + "Tab").style.display = "block";
 localStorage.setItem("trackora_active_tab", tab);
+
+document.querySelectorAll(".secondary-btn.active-tab").forEach(b => b.classList.remove("active-tab"));
+const activeBtn = document.getElementById("tabBtn-" + tab);
+if (activeBtn) activeBtn.classList.add("active-tab");
  
 if (tab === "master") loadMaster();
 if (tab === "comparison") loadComparisons();

@@ -7,14 +7,22 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
 
     <style>
+        
         body { margin:0; font-family: Arial, sans-serif; background:#f4f6f8; }
+        *, *::before, *::after {
+            box-sizing: border-box;
+        }
         .container { display:flex; height:100vh; }
         .sidebar {
+            display:flex;
+            flex-direction:column;
             width:220px;
-            background:#1f2937;
+            background: linear-gradient(180deg, #1F4E78 0%, #163b5c 100%);
             color:white;
             padding-top:20px;
             overflow-y: auto;
+            min-height: 0;
+            box-shadow: 2px 0 8px rgba(0,0,0,0.15);
         }
         .sidebar a {
             display:block;
@@ -23,12 +31,19 @@
             text-decoration:none;
         }
         .sidebar a:hover {
-            background:#374151;
+            background: rgba(255,255,255,0.1);
+        }
+        .sidebar a.active {
+            background: rgba(255,255,255,0.18);
+            color: white;
+            border-left: 4px solid #4dabf7;
+            font-weight: 600;
         }
         .content {
             flex:1;
             padding:20px;
             overflow:auto;
+            min-height: 0;
         }
         .header {
             font-size:22px;
@@ -217,7 +232,7 @@ animation:spin 1s linear infinite;
  
     </style>
     <style>
-body { font-family: Arial; background:#f4f6f8; padding:20px; }
+body { font-family: Arial; background:#f4f6f8;}
 table { border-collapse: collapse; width:100%; background:white; margin-bottom:30px; }
 th, td { padding:10px; border:1px solid #ddd; text-align:center; }
 th { background:#2c3e50; color:white; }
@@ -227,6 +242,96 @@ th { background:#2c3e50; color:white; }
 button { padding:5px 10px; margin:2px; cursor:pointer; }
 .flash { padding:10px; background:#d1ecf1; border:1px solid #bee5eb;
          color:#0c5460; margin-bottom:15px; border-radius:5px; }
+
+.page-header-row{
+display:flex;
+justify-content:space-between;
+align-items:center;
+margin-bottom:20px;
+flex-wrap:wrap;
+gap:12px;
+}
+
+.header-right{
+display:flex;
+align-items:center;
+gap:14px;
+}
+
+.user-menu{
+position:relative;
+}
+
+.current-user-badge{
+display:flex;
+align-items:center;
+gap:8px;
+font-size:13px;
+color:#333;
+background:white;
+border:1px solid #e5e7eb;
+padding:6px 12px;
+border-radius:8px;
+cursor:pointer;
+font-family:inherit;
+transition:0.15s;
+}
+
+.current-user-badge:hover{
+background:#f8f9fa;
+border-color:#d1d5db;
+}
+
+.current-user-badge i{
+font-size:22px;
+color:#1F4E78;
+}
+
+.current-user-badge > div{
+text-align:left;
+}
+
+.user-name{
+font-weight:600;
+}
+
+.user-email{
+font-size:11px;
+color:#777;
+}
+
+.user-dropdown{
+display:none;
+position:absolute;
+top:calc(100% + 6px);
+right:0;
+background:white;
+border:1px solid #e5e7eb;
+border-radius:8px;
+box-shadow:0 8px 20px rgba(0,0,0,0.12);
+min-width:160px;
+overflow:hidden;
+z-index:1000;
+}
+
+.user-dropdown.show{
+display:block;
+}
+
+.dropdown-logout{
+display:flex;
+align-items:center;
+gap:8px;
+padding:10px 14px;
+color:#dc3545;
+text-decoration:none;
+font-size:14px;
+transition:0.15s;
+}
+
+.dropdown-logout:hover{
+background:#fdf2f2;
+}
 </style>
 <script>
 let loadingInProgress = false;
@@ -276,23 +381,55 @@ setTimeout(function(){
       window.location.reload();
     }
   });
+
+</script>
+<script>
+function toggleUserMenu(event){
+    event.stopPropagation();
+    document.getElementById("userDropdown").classList.toggle("show");
+}
+
+document.addEventListener("click", function(){
+    const dropdown = document.getElementById("userDropdown");
+    if(dropdown) dropdown.classList.remove("show");
+});
 </script>
 </head>
 <body>
  
 <div class="container">
     <div class="sidebar">
-        <a href="{{url_for('dashboard')}}" data-intro="Welcome to SendTrix" data-step="1"><i class="fa-solid fa-chart-line"></i> Dashboard</a>
-        <a href="{{url_for('activity_page')}}"><i class="fa-solid fa-clock"></i> Your Activity</a>
-        <a href="/categories" data-intro="You can find your categories and configurations here" data-step="4"><i class="fa-solid fa-folder"></i> Your Categories</a>
-        <a href="/templates"><i class="fa-solid fa-robot"></i> Your Templates</a>
-        <a href="{{ url_for('workspaces_page') }}"><i class="fa-solid fa-layer-group"></i> Workspaces</a>
-        <a href="{{ url_for('bulk_email') }}" data-intro="Last but not the don't forget to use our powerful feature" data-step="15"><i class="fa-solid fa-envelope"></i> Bulk Email</a>
-        <a href="{{ url_for('applications') }}"><i class="fa-solid fa-database"></i> Trackora</a>
+        <a href="{{url_for('dashboard')}}" class="{{ 'active' if request.endpoint == 'dashboard' else '' }}" data-intro="Welcome to SendTrix" data-step="1"><i class="fa-solid fa-chart-line"></i> Dashboard</a>
+        <a href="{{url_for('activity_page')}}" class="{{ 'active' if request.endpoint == 'activity_page' else '' }}"><i class="fa-solid fa-clock"></i> Your Activity</a>
+        <a href="{{ url_for('categories')}}" class="{{ 'active' if request.endpoint == 'categories' else '' }}" data-intro="You can find your categories and configurations here" data-step="4"><i class="fa-solid fa-folder"></i> Your Categories</a>
+        <a href="{{ url_for('templates')}}" class="{{ 'active' if request.endpoint == 'templates' else '' }}"><i class="fa-solid fa-robot"></i> Your Templates</a>
+        <a href="{{ url_for('workspaces_page') }}" class="{{ 'active' if request.endpoint == 'workspaces_page' else '' }}"><i class="fa-solid fa-layer-group"></i> Workspaces</a>
+        <a href="{{ url_for('bulk_email') }}" class="{{ 'active' if request.endpoint == 'bulk_email' else '' }}" data-intro="Last but not the don't forget to use our powerful feature" data-step="15"><i class="fa-solid fa-envelope"></i> Bulk Email</a>
+        <a href="{{ url_for('applications') }}" class="{{ 'active' if request.endpoint == 'applications' else '' }}"><i class="fa-solid fa-database"></i> Trackora</a>
     </div>
- 
-    <div class="content">
-        <div class="header">{{ title }}</div>
+        <div class="content">
+        <div class="page-header-row">
+            <div class="header">{{ title }}</div>
+            <div class="header-right">
+                {% if current_user %}
+                <div class="user-menu">
+                    <button class="current-user-badge" onclick="toggleUserMenu(event)">
+                        <i class="fa-solid fa-circle-user"></i>
+                        <div>
+                            <div class="user-name">{{ current_user.display_name or "User" }}</div>
+                            <div class="user-email">{{ current_user.email }}</div>
+                        </div>
+                        <i class="fa-solid fa-chevron-down" style="font-size:11px; margin-left:4px;"></i>
+                    </button>
+                    <div class="user-dropdown" id="userDropdown">
+                        <a href="{{ url_for('logout') }}" class="dropdown-logout">
+                            <i class="fa-solid fa-right-from-bracket"></i> Logout
+                        </a>
+                    </div>
+                </div>
+                {% endif %}
+            </div>
+        </div>
         {% block content %}{% endblock %}
     </div>
 </div>

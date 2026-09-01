@@ -1,11 +1,9 @@
-<!DOCTYPE html>
-<html>
-<head>
-    <title>Templates</title>
+{% extends "base.html" %}
+
+{% block content %}
+<style>
  
-    <style>
- 
-        body{
+        .templates-page{
             font-family: Arial, sans-serif;
             background:#f4f6fb;
             padding:40px;
@@ -122,22 +120,12 @@ font-size:13px;
 cursor:pointer;
 }
 </style>
-<script>
-  window.addEventListener("pageshow", function (event) {
-    if (event.persisted) {
-      window.location.reload();
-    }
-  });
-</script>
-</head>
- 
- 
-<body>
- 
+
+<div class="templates-page">
 <h1>Templates</h1>
 <div class="section">
  
-<div class="section-title">Template Folder Settings</div>
+<div class="section-title">Folder Settings</div>
  
 <div style="display:flex; gap:20px; margin-bottom:20px;">
  
@@ -633,9 +621,5 @@ location.reload()
 }
  
 </script>
- 
- 
- 
-</body>
-</html>
- 
+</div>
+{% endblock %}

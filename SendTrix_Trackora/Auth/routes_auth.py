@@ -1,6 +1,7 @@
 from flask_server import app
 from .auth import get_login_url,authenticate_from_code
 from flask import redirect,flash,request,url_for,session,render_template
+from db import get_connection
 
 from functools import wraps
 
@@ -76,3 +77,26 @@ def logout():
 @app.route("/logged-out")
 def logged_out():
     return render_template("logged_out.html")
+
+@app.context_processor
+def inject_current_user():
+    user_id = session.get("user_id")
+    if not user_id:
+        return {"current_user": None}
+
+    conn = get_connection()
+    try:
+        with conn.cursor() as cursor:
+            cursor.execute("""
+                SELECT email, display_name
+                FROM users
+                WHERE id = %s
+            """, (user_id,))
+            row = cursor.fetchone()
+    finally:
+        conn.close()
+
+    if not row:
+        return {"current_user": None}
+
+    return {"current_user": {"email": row[0], "display_name": row[1]}}

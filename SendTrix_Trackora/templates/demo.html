@@ -1,0 +1,1910 @@
+<!DOCTYPE html>
+<html>
+<head>
+<title>Bulk Email</title>
+ 
+<style>
+.sending-overlay{
+position:fixed;
+top:0;
+left:0;
+width:100%;
+height:100%;
+background:rgba(0,0,0,.45);
+display:flex;
+justify-content:center;
+align-items:center;
+z-index:99999;
+}
+ 
+.sending-box{
+background:white;
+padding:35px;
+border-radius:10px;
+min-width:350px;
+text-align:center;
+box-shadow:0 10px 30px rgba(0,0,0,.25);
+}
+ 
+.spinner{
+width:50px;
+height:50px;
+margin:0 auto 20px;
+border:5px solid #ddd;
+border-top:5px solid #0078d4;
+border-radius:50%;
+animation:spin 1s linear infinite;
+}
+ 
+@keyframes spin{
+0%{transform:rotate(0deg);}
+100%{transform:rotate(360deg);}
+}
+ 
+ 
+body{
+font-family: Arial, sans-serif;
+background:#f4f6f9;
+margin:0;
+padding:30px;
+}
+ 
+.header{
+display:flex;
+justify-content:space-between;
+align-items:center;
+margin-bottom:30px;
+}
+ 
+.cards{
+display:flex;
+gap:20px;
+margin-bottom:30px;
+}
+ 
+.stat-card{
+flex:1;
+background:white;
+padding:20px;
+border-radius:8px;
+box-shadow:0 3px 10px rgba(0,0,0,0.08);
+text-align:center;
+}
+ 
+.stat-card h3{
+margin:0;
+font-size:14px;
+color:#555;
+}
+ 
+.stat-card p{
+font-size:28px;
+margin-top:10px;
+font-weight:bold;
+}
+ 
+.btn{
+background:#0078d4;
+color:white;
+padding:10px 16px;
+border:none;
+border-radius:4px;
+cursor:pointer;
+}
+ 
+.btn:hover{
+background:#005a9e;
+}
+ 
+table{
+width:100%;
+border-collapse:collapse;
+background:white;
+box-shadow:0 3px 10px rgba(0,0,0,0.08);
+}
+ 
+th,td{
+padding:12px;
+border-bottom:1px solid #eee;
+text-align:left;
+}
+ 
+th{
+background:#f0f2f5;
+}
+ 
+.modal{
+display:none;
+position:fixed;
+z-index:1000;
+left:0;
+top:0;
+width:100%;
+height:100%;
+background:rgba(0,0,0,0.4);
+overflow:auto;
+}
+ 
+.modal-content{
+background:white;
+width:600px;
+margin:60px auto;
+padding:25px;
+border-radius:8px;
+}
+ 
+.close{
+float:right;
+font-size:20px;
+cursor:pointer;
+}
+ 
+select,input[type="file"]{
+width:100%;
+padding:8px;
+margin-top:8px;
+margin-bottom:20px;
+}
+ 
+.alert{
+padding:10px;
+background:#ffe0e0;
+color:#a10000;
+margin-bottom:15px;
+border-radius:4px;
+}
+ 
+.success{
+background:#e0ffe8;
+color:#007a2f;
+}
+ 
+</style>
+<script>
+  window.addEventListener("pageshow", function (event) {
+    if (event.persisted) {
+      window.location.reload();
+    }
+  });
+</script>
+</head>
+ 
+<body>
+ 
+<h2>Bulk Email Dashboard</h2>
+ 
+<div class="header">
+<button class="btn" onclick="openModal()">+ Create Bulk Email</button>
+</div>
+ 
+<div class="cards">
+ 
+<div class="stat-card">
+<h3>Active</h3>
+<p>{{ active_count or 0 }}</p>
+</div>
+ 
+<div class="stat-card">
+<h3>Completed</h3>
+<p>{{ completed_count or 0 }}</p>
+</div>
+ 
+<div class="stat-card">
+<h3>Paused</h3>
+<p>{{ paused_count or 0 }}</p>
+</div>
+ 
+<div class="stat-card">
+<h3>Total</h3>
+<p>{{ total_count or 0 }}</p>
+</div>
+ 
+</div>
+ 
+<table>
+ 
+<tr>
+<th>ID</th>
+<th>Subject</th>
+<th>Category</th>
+<th>Status</th>
+<th>Recipients</th>
+<th>Created</th>
+</tr>
+ 
+{% if bulk_runs %}
+{% for run in bulk_runs %}
+ 
+<tr>
+<td>{{ run.id }}</td>
+<td>{{ run.subject }}</td>
+<td>{{ run.category }}</td>
+<td>{{ run.status }}</td>
+<td>{{ run.recipient_count }}</td>
+<td>{{ run.created_at }}</td>
+</tr>
+ 
+{% endfor %}
+{% else %}
+ 
+<tr>
+<td colspan="6" style="text-align:center;">No bulk runs yet</td>
+</tr>
+ 
+{% endif %}
+ 
+</table>
+ 
+<div id="bulkModal" class="modal">
+ 
+<div class="modal-content">
+ 
+<span class="close" onclick="closeModal()">&times;</span>
+ 
+<h2>📧 Bulk Email Sender</h2>
+ 
+{% with messages = get_flashed_messages() %}
+{% if messages %}
+{% for msg in messages %}
+<div class="alert">{{ msg }}</div>
+{% endfor %}
+{% endif %}
+{% endwith %}
+ 
+<form method="POST"
+      action="{{ url_for('send_bulk_from_draft_route') }}"
+      enctype="multipart/form-data"
+      id="bulkForm">
+<label>Workflow Type</label>
+ 
+<select name="workflow_type" id="workflow_type" required>
+ 
+<option value="generic">
+Generic Bulk Mail
+</option>
+ 
+<option value="server">
+Server Workflow
+</option>
+ 
+</select>
+<div id="serverOptions" style="display:none;">
+ 
+<label>Server Sending Mode</label>
+ 
+<select name="server_mode" id="server_mode">
+ 
+<option value="hostname">
+Per Hostname
+</option>
+ 
+<option value="owner">
+Group By Owner
+</option>
+ 
+</select>
+ 
+</div>
+ 
+<label>Select Draft</label>
+ 
+{% if drafts %}
+<select name="draft_id" required>
+{% for draft in drafts %}
+<option value="{{ draft.id }}">
+{{ draft.subject or "No Subject" }}
+</option>
+{% endfor %}
+</select>
+{% else %}
+<div class="alert">No drafts found in Outlook.</div>
+{% endif %}
+ 
+<label>Select Category</label>
+ 
+<select name="bulk_category_name" required>
+<option value="">-- Select Category --</option>
+ 
+{% for category in categories %}
+<option value="{{ category.name }}">
+{{ category.name }}
+</option>
+{% endfor %}
+ 
+</select>
+ 
+<label>Upload Excel File (.xlsx)</label>
+<input type="file" name="excel_file" accept=".xlsx" required>
+ 
+<button type="submit" class="btn" id="submitBulkBtn">
+Upload & Preview
+</button>
+ 
+</form>
+ 
+</div>
+</div>
+<div id="sendingOverlay" class="sending-overlay" style="display:none;">
+    <div class="sending-box">
+        <div class="spinner"></div>
+        <h2>Sending Emails...</h2>
+        <p>Please don't refresh or close this page.</p>
+        <p id="sendingStatus">Preparing...</p>
+    </div>
+</div>
+ 
+<script>
+ 
+function openModal(){
+document.getElementById("bulkModal").style.display="block";
+}
+ 
+function closeModal(){
+document.getElementById("bulkModal").style.display="none";
+}
+const workflowType =
+document.getElementById("workflow_type");
+ 
+const serverOptions =
+document.getElementById("serverOptions");
+ 
+workflowType.addEventListener("change", function(){
+ 
+if(this.value === "server"){
+ 
+serverOptions.style.display = "block";
+ 
+}else{
+ 
+serverOptions.style.display = "none";
+ 
+}
+ 
+});
+
+document.getElementById("bulkForm").addEventListener("submit",function(e){
+ 
+const fileInput=document.querySelector('input[name="excel_file"]');
+ 
+if(!fileInput.files.length){
+alert("Please upload an Excel file.");
+e.preventDefault();
+return;
+}
+ 
+const fileName=fileInput.files[0].name.toLowerCase();
+ 
+if(!fileName.endsWith(".xlsx")){
+alert("Only .xlsx files are supported.");
+e.preventDefault();
+return;
+}
+ 
+const btn=document.getElementById("submitBulkBtn");
+btn.innerText="Processing...";
+btn.disabled=true;
+
+//Show loading Overlay
+showLoading("Uploading Excel...")
+ 
+});
+ 
+const bulkModal=document.getElementById("bulkModal");
+ 
+bulkModal.onclick=function(e){
+if(e.target===bulkModal){
+closeModal();
+}
+}
+function showLoading(message="Processing..."){
+    document.getElementById("sendingStatus").innerText = message;
+    document.getElementById("sendingOverlay").style.display = "flex";
+}
+ 
+function hideLoading(){
+    document.getElementById("sendingOverlay").style.display = "none";
+}
+ 
+ 
+</script>
+ 
+</body>
+</html>
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Categories Dashboard</title>
+ 
+<style>
+ 
+body{
+font-family: Arial, Helvetica, sans-serif;
+margin:0;
+background:#f5f6fa;
+}
+ 
+.container{
+display:flex;
+height:100vh;
+}
+ 
+/* LEFT PANEL */
+ 
+.sidebar{
+width:260px;
+background:white;
+border-right:1px solid #ddd;
+overflow-y:auto;
+}
+ 
+.sidebar h2{
+padding:18px;
+margin:0;
+border-bottom:1px solid #eee;
+}
+
+.category.small{
+  font-size: 14px;
+  padding-left: 30px;
+  background: #fafafa;
+}
+ 
+.category{
+padding:14px 18px;
+cursor:pointer;
+border-bottom:1px solid #f0f0f0;
+transition:background 0.2s;
+}
+ 
+.category:hover{
+background:#f3f6ff;
+}
+
+.current-version{
+  font-weight: bold;
+  color: #0078d4;
+}
+ 
+.category.active{
+background:#e8f0fe;
+font-weight:bold;
+}
+ 
+/* RIGHT PANEL */
+ 
+.details{
+flex:1;
+padding:30px;
+overflow-y:auto;
+min-width: 0;
+}
+ 
+.header{
+display:flex;
+justify-content:space-between;
+align-items:center;
+margin-bottom:25px;
+}
+ 
+.edit-btn{
+background:#0078d4;
+color:white;
+border:none;
+padding:8px 14px;
+border-radius:4px;
+cursor:pointer;
+}
+ 
+.edit-btn:hover{
+background:#005ea2;
+}
+ 
+/* STAT CARDS */
+ 
+.stats{
+display:grid;
+grid-template-columns:repeat(4,1fr);
+gap:15px;
+margin-bottom:30px;
+}
+ 
+.card{
+background:white;
+border-radius:8px;
+padding:20px;
+border:1px solid #eee;
+}
+ 
+.card-title{
+font-size:14px;
+color:#777;
+}
+ 
+.card-value{
+font-size:26px;
+font-weight:bold;
+margin-top:5px;
+}
+ 
+/* DETAILS */
+ 
+.section{
+margin-bottom:25px;
+}
+ 
+.section h3{
+margin-bottom:10px;
+}
+ 
+.value{
+background:white;
+padding:10px;
+border-radius:6px;
+border:1px solid #ddd;
+margin-bottom:6px;
+}
+ 
+.empty{
+color:#888;
+font-style:italic;
+}
+ 
+/* TEMPLATE LIST */
+ 
+.template{
+padding:10px;
+border:1px solid #ddd;
+border-radius:6px;
+margin-bottom:8px;
+background:white;
+font-weight:500;
+}
+ 
+/* MODAL BACKGROUND */
+ 
+.modal{
+display:none;
+position:fixed;
+z-index:1000;
+left:0;
+top:0;
+width:100%;
+height:100%;
+background:rgba(0,0,0,0.45);
+align-items:center;
+justify-content:center;
+}
+ 
+/* MODAL BOX */
+ 
+.modal-content{
+background:white;
+width:640px;
+border-radius:10px;
+box-shadow:0 10px 30px rgba(0,0,0,0.2);
+display:flex;
+flex-direction:column;
+max-height:85vh;
+}
+ 
+/* MODAL HEADER */
+ 
+.modal-header{
+padding:20px 24px;
+border-bottom:1px solid #eee;
+font-size:18px;
+font-weight:bold;
+}
+ 
+/* MODAL BODY */
+ 
+.modal-body{
+padding:20px 24px;
+overflow-y:auto;
+flex:1;
+}
+ 
+/* FORM */
+ 
+.modal label{
+font-size:14px;
+font-weight:bold;
+display:block;
+margin-top:10px;
+margin-bottom:5px;
+}
+ 
+.modal input,
+.modal select{
+width:100%;
+padding:9px;
+border-radius:6px;
+border:1px solid #ccc;
+margin-bottom:10px;
+}
+ 
+/* TEMPLATE EDITOR */
+ 
+.template-row{
+display:flex;
+gap:10px;
+align-items:center;
+margin-bottom:10px;
+}
+ 
+.template-row select{
+flex:1;
+}
+ 
+.template-row button{
+background:#ff4d4f;
+border:none;
+color:white;
+padding:7px 10px;
+border-radius:4px;
+cursor:pointer;
+}
+ 
+.template-row button:hover{
+background:#d9363e;
+}
+ 
+.add-template{
+margin-top:5px;
+background:#e8f0fe;
+border:none;
+padding:8px 12px;
+border-radius:6px;
+cursor:pointer;
+}
+ 
+.add-template:hover{
+background:#d2e3fc;
+}
+ 
+/* MODAL FOOTER */
+ 
+.modal-actions{
+border-top:1px solid #eee;
+padding:15px 24px;
+display:flex;
+justify-content:flex-end;
+gap:10px;
+background:white;
+}
+ 
+.save-btn{
+background:#0078d4;
+color:white;
+border:none;
+padding:9px 16px;
+border-radius:6px;
+cursor:pointer;
+}
+ 
+.save-btn:hover{
+background:#005ea2;
+}
+ 
+.cancel-btn{
+background:#eee;
+border:none;
+padding:9px 16px;
+border-radius:6px;
+cursor:pointer;
+}
+ 
+</style>
+<script>
+  window.addEventListener("pageshow", function (event) {
+    if (event.persisted) {
+      window.location.reload();
+    }
+  });
+</script>
+</head>
+ 
+<body>
+
+ 
+<div class="container">
+ 
+<div class="sidebar">
+<h2>Categories</h2>
+<div id="categoryList"></div>
+</div>
+ 
+<div class="details" id="detailsPanel">
+<h2>Select a Category</h2>
+<p class="empty">Click a category to view details</p>
+</div>
+ 
+</div>
+ 
+<div id="editModal" class="modal">
+<div class="modal-content">
+ 
+<div class="modal-header">
+Edit Category
+</div>
+ 
+<div class="modal-body">
+ 
+<input type="hidden" id="edit_category_name">
+<input type="hidden" id="edit_category_version">
+
+ 
+<label>Max Attempts</label>
+<input type="number" id="edit_max_attempts">
+ 
+<label>Interval Minutes</label>
+<input type="number" id="edit_interval">
+ 
+<label>Mode</label>
+<select id="edit_mode" onchange="toggleMode()">
+<option value="manual">Manual</option>
+<option value="template">Template</option>
+</select>
+ 
+<!-- MANUAL FOLLOWUP TEXT -->
+ 
+<div id="manualBox" style="display:none">
+ 
+<label>Follow-up Text</label>
+<textarea id="edit_followup_text" rows="5" style="width:100%; padding:10px; border-radius:6px; border:1px solid #ccc;"></textarea>
+ 
+</div>
+<div style="margin-top:15px">
+ 
+<label style="display:flex;align-items:center;gap:2px;font-weight:normal">
+<input type="checkbox" id="restart_sequences">
+Restart follow-up sequence for active conversations
+</label>
+ 
+<div style="font-size:12px;color:#666;margin-top:5px">
+If checked, all active conversations will restart from attempt 1 using the new settings.
+</div>
+ 
+</div>
+ 
+<!-- TEMPLATE MODE -->
+ 
+<div id="templateBox">
+ 
+<h4>Template Sequence</h4>
+ 
+<div id="templateEditor"></div>
+ 
+<button class="add-template" type="button" onclick="addTemplate()">
++ Add Template
+</button>
+ 
+</div>
+ 
+ 
+</div>
+ 
+<div class="modal-actions">
+ 
+<button class="cancel-btn" onclick="closeEdit()">Cancel</button>
+ 
+<button class="save-btn" onclick="saveCategory()">Save</button>
+ 
+</div>
+ 
+</div>
+</div>
+ 
+<script>
+
+function toggleMode(){
+ 
+const mode=document.getElementById("edit_mode").value
+ 
+const manualBox=document.getElementById("manualBox")
+const templateBox=document.getElementById("templateBox")
+ 
+if(mode==="manual"){
+ 
+manualBox.style.display="block"
+templateBox.style.display="none"
+ 
+}else{
+ 
+manualBox.style.display="none"
+templateBox.style.display="block"
+ 
+}
+ 
+}
+ 
+
+ 
+/* LOAD CATEGORY LIST */
+ 
+function loadCategories(){
+ 
+fetch("/api/categories")
+.then(res => res.json())
+.then(data => {
+ 
+const container = document.getElementById("categoryList")
+container.innerHTML = ""
+ 
+data.forEach(bucket => {
+ 
+const categoryDiv = document.createElement("div")
+categoryDiv.className = "category"
+categoryDiv.innerText = bucket.name
+ 
+const versionsDiv = document.createElement("div")
+versionsDiv.style.display = "none"
+versionsDiv.style.paddingLeft = "20px"
+ 
+bucket.versions.forEach((v,index)=> {
+ 
+const versionDiv = document.createElement("div")
+versionDiv.className = "category small"
+versionDiv.style.fontSize = "14px"
+versionDiv.style.background = "#fafafa"
+if(index===0){
+  versionDiv.innerText = "v" + v +" (current)"
+  versionDiv.classList.add("current-version")
+}
+else{
+  versionDiv.innerText = "v" + v
+}
+
+ 
+versionDiv.onclick = function(e){
+e.stopPropagation()
+loadCategory(bucket.name, v, versionDiv,bucket.versions[0])
+}
+ 
+versionsDiv.appendChild(versionDiv)
+ 
+})
+ 
+categoryDiv.onclick = function(){
+ 
+const open = versionsDiv.style.display === "block"
+versionsDiv.style.display = open ? "none" : "block"
+ 
+}
+ 
+container.appendChild(categoryDiv)
+container.appendChild(versionsDiv)
+ 
+})
+ 
+})
+ 
+}
+ 
+/* LOAD CATEGORY DETAILS */
+ 
+function loadCategory(name,version, element,latestVersion){
+
+const isEditable=Number(version)===Number(latestVersion);
+ 
+document.querySelectorAll(".category").forEach(c=>c.classList.remove("active"))
+element.classList.add("active")
+ 
+fetch(`/category/${encodeURIComponent(name)}/${version}`)
+.then(res=>res.json())
+.then(data=>{
+ 
+function show(val){
+if(val===null || val===undefined || val===""){
+return '<span class="empty">Not set</span>'
+}
+return val
+}
+ 
+const stats = data.stats || {}
+ 
+let templatesHTML=""
+ 
+if(data.templates && data.templates.length>0){
+ 
+templatesHTML=data.templates.map(t=>{
+ 
+let order = t.order ?? ""
+let subject = t.subject ?? "Template"
+ 
+if(order){
+return `<div class="template">Template ${order} — ${subject}</div>`
+}
+ 
+return `<div class="template">${subject}</div>`
+ 
+}).join("")
+ 
+}else{
+ 
+templatesHTML='<div class="empty">No templates</div>'
+ 
+}
+ 
+const html=`
+ 
+<div class="header">
+<h2>${name}(v${version})</h2>
+${isEditable ? `<button class="edit-btn" onclick="openEdit('${name}',${version})">Edit</button>`:`<button class="edit-btn" onclick="cloneCategory('${name}',${version})">Clone Version</button>`}
+</div>
+ 
+<div class="stats">
+
+ 
+<div class="card">
+<div class="card-title">Tagged Mails</div>
+<div class="card-value">${show(stats.total)}</div>
+</div>
+ 
+<div class="card">
+<div class="card-title">Active</div>
+<div class="card-value">${show(stats.active)}</div>
+</div>
+ 
+<div class="card">
+<div class="card-title">Client Paused</div>
+<div class="card-value">${show(stats.client_paused)}</div>
+</div>
+<div class="card">
+<div class="card-title">Manual Paused</div>
+<div class="card-value">${show(stats.manual_paused)}</div>
+</div>
+ 
+<div class="card">
+<div class="card-title">Completed</div>
+<div class="card-value">${show(stats.completed)}</div>
+</div>
+
+${stats.active > 0 ? `
+<div style="
+background:#fff3cd;
+border:1px solid #ffeeba;
+padding:12px;
+border-radius:6px;
+margin-bottom:20px;
+font-size:14px;
+">
+⚠ This category has <b>${stats.active}</b> active conversations.
+Editing follow-up settings may affect future followups.
+</div>
+` : ""}
+ 
+</div>
+ 
+<div class="section">
+<h3>Followup Settings</h3>
+<div class="value">Mode: ${show(data.mode)}</div>
+<div class="value">Max Attempts: ${show(data.max_attempts)}</div>
+<div class="value">Interval Minutes: ${show(data.interval_minutes)}</div>
+</div>
+ 
+<div class="section">
+<h3>Followup Text</h3>
+<div class="value">${show(data.followup_text)}</div>
+</div>
+ 
+<div class="section">
+<h3>Templates</h3>
+${templatesHTML}
+</div>
+ 
+<div class="section">
+<h3>Last Updated</h3>
+<div class="value">${show(data.updated_at)}</div>
+</div>
+ 
+`
+ 
+document.getElementById("detailsPanel").innerHTML=html
+ 
+})
+ 
+}
+async function cloneCategory(name,version){
+ 
+if(!confirm(`Clone ${name} v${version} as a new version?`)){
+ return
+}
+ 
+const res = await fetch("/clone_category",{
+ method:"POST",
+ headers:{
+  "Content-Type":"application/json"
+ },
+ body:JSON.stringify({
+  category_name:name,
+  version:version
+ })
+})
+ 
+const data = await res.json()
+ 
+if(res.ok && data.success){
+ 
+ alert(`Version cloned as v${data.version}successfully`)
+ 
+ loadCategories()
+ 
+}else{
+ 
+ alert("Clone failed: " + (data.error || "Unknown error"))
+ 
+ console.error("Clone error:", data)
+ 
+}
+ 
+}
+ 
+ 
+ 
+/* OPEN EDIT MODAL */
+ 
+async function openEdit(name,version){
+ 
+await loadDrafts()
+ 
+const res = await fetch(`/category/${encodeURIComponent(name)}/${version}`)
+const data = await res.json()
+ 
+document.getElementById("edit_category_name").value=name
+document.getElementById("edit_category_version").value=version
+document.getElementById("edit_max_attempts").value=data.max_attempts
+document.getElementById("edit_interval").value=data.interval_minutes
+document.getElementById("edit_mode").value=data.mode
+document.getElementById("edit_followup_text").value=data.followup_text || ""
+toggleMode()
+ 
+const container=document.getElementById("templateEditor")
+container.innerHTML=""
+ 
+/* EXISTING TEMPLATE SEQUENCE */
+ 
+if(data.templates && data.templates.length>0){
+ 
+data.templates.forEach(t=>{
+ 
+let matchedDraft = draftList.find(d => d.subject === t.subject)
+ 
+if(matchedDraft){
+addTemplateRow(matchedDraft.id)
+}else{
+addTemplateRow("") 
+}
+ 
+})
+ 
+}else{
+ 
+/* If no templates exist show one row */
+addTemplateRow()
+ 
+}
+ 
+document.getElementById("editModal").style.display="flex"
+ 
+}
+ 
+ 
+/* TEMPLATE ROW */
+ 
+let draftList=[]
+ 
+function loadDrafts(){
+ 
+return fetch("/fetch_drafts")
+.then(res=>res.json())
+.then(data=>{
+ 
+draftList = data.value || []
+ 
+})
+ 
+}
+ 
+function addTemplateRow(id="",subject=""){
+ 
+const container=document.getElementById("templateEditor")
+ 
+const div=document.createElement("div")
+div.className="template-row"
+ 
+let options=`<option value="">Select Draft Template</option>`
+ 
+draftList.forEach(d=>{
+ 
+const selected = d.id===id ? "selected" : ""
+ 
+options+=`<option value="${d.id}" ${selected}>${d.subject || "No Subject"}</option>`
+ 
+})
+ 
+div.innerHTML=`
+ 
+<select class="template-id">
+${options}
+</select>
+ 
+<input type="hidden" class="template-subject" value="${subject}">
+ 
+<button onclick="removeTemplate(this)">Remove</button>
+ 
+`
+ 
+container.appendChild(div)
+ 
+}
+ 
+function addTemplate(){
+addTemplateRow()
+}
+ 
+function removeTemplate(btn){
+btn.parentElement.remove()
+}
+ 
+/* CLOSE MODAL */
+ 
+function closeEdit(){
+document.getElementById("editModal").style.display="none"
+}
+ 
+/* SAVE CATEGORY */
+let saving=false
+ 
+function saveCategory(){
+ 
+ if (saving) return
+ saving=true
+ 
+const name=document.getElementById("edit_category_name").value
+const version=document.getElementById("edit_category_version").value
+const max_attempts=document.getElementById("edit_max_attempts").value
+const interval=document.getElementById("edit_interval").value
+const mode=document.getElementById("edit_mode").value
+const followup_text=document.getElementById("edit_followup_text").value
+const restart_sequences=document.getElementById("restart_sequences").checked
+ 
+const templates=[]
+ 
+document.querySelectorAll("#templateEditor .template-row").forEach(row=>{
+ 
+const select=row.querySelector(".template-id")
+ 
+const draftId=select.value
+const subject=select.options[select.selectedIndex]?.text || ""
+ 
+if(draftId){
+templates.push({
+id:draftId,
+subject:subject
+})
+}
+ 
+})
+ 
+fetch("/update_category",{
+method:"POST",
+headers:{"Content-Type":"application/json"},
+body:JSON.stringify({
+category_name:name,
+version:version,
+max_attempts:max_attempts,
+interval_minutes:interval,
+mode:mode,
+followup_text:followup_text,
+templates:templates,
+restart_sequences:restart_sequences
+})
+})
+ 
+.then(res=>{
+ if(!res.ok){
+   throw new Error("Server error")
+ }
+ return res.json()
+})
+ 
+.then(data=>{
+ 
+saving=false
+ 
+// ✅ close modal
+closeEdit()
+ 
+// ✅ reload categories
+loadCategories()
+ 
+// ✅ reload the edited category after list refresh
+setTimeout(()=>{
+ 
+const items=document.querySelectorAll(".category")
+ 
+for(const el of items){
+  if(el.innerText.includes(name)){
+   el.click()
+   break
+  }
+}
+ 
+},200)
+ 
+})
+ 
+.catch(err=>{
+ 
+saving=false
+console.error("Update failed:",err)
+alert("Failed to update category")
+ 
+})
+ 
+}
+ 
+/* PAGE LOAD */
+ 
+document.addEventListener("DOMContentLoaded",function(){
+    loadCategories()
+
+    const modal=document.getElementById("editModal")
+    modal.onclick=function(e){
+        if(e.target===modal){
+            closeEdit()
+        }
+    }
+})
+ 
+</script>
+ 
+</body>
+</html>
+
+
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Templates</title>
+ 
+    <style>
+ 
+        body{
+            font-family: Arial, sans-serif;
+            background:#f4f6fb;
+            padding:40px;
+        }
+ 
+        h1{
+            margin-bottom:30px;
+        }
+ 
+        .section{
+            margin-bottom:40px;
+        }
+ 
+        .section-title{
+            font-size:20px;
+            margin-bottom:15px;
+            border-left:4px solid #4a6cf7;
+            padding-left:10px;
+        }
+ 
+        .draft-container{
+            display:grid;
+            grid-template-columns:repeat(auto-fill,minmax(320px,1fr));
+            gap:15px;
+        }
+ 
+        .draft-card{
+            background:white;
+            border-radius:10px;
+            padding:18px;
+            box-shadow:0 2px 8px rgba(0,0,0,0.08);
+            transition:0.2s;
+        }
+ 
+        .draft-card:hover{
+            transform:translateY(-2px);
+            box-shadow:0 4px 12px rgba(0,0,0,0.12);
+        }
+ 
+        .subject{
+            font-weight:bold;
+            font-size:16px;
+            margin-bottom:6px;
+        }
+ 
+        .preview{
+            font-size:14px;
+            color:#555;
+        }
+ 
+        .empty{
+            color:#888;
+            font-style:italic;
+        }
+        .button-row{
+margin-top:12px;
+display:flex;
+gap:8px;
+}
+ 
+.move-btn{
+padding:7px 14px;
+font-size:13px;
+border:none;
+border-radius:20px;
+cursor:pointer;
+background:#10b981;
+color:white;
+transition:0.2s;
+}
+ 
+.move-btn:hover{
+background:#059669;
+}
+
+.folder-controls{
+margin-bottom:20px;
+display:flex;
+gap:10px;
+}
+ 
+.folder-input{
+padding:8px 10px;
+border:1px solid #ddd;
+border-radius:6px;
+font-size:14px;
+width:220px;
+}
+ 
+.folder-input:focus{
+outline:none;
+border-color:#4a6cf7;
+}
+ 
+.create-folder-btn{
+padding:8px 16px;
+border:none;
+border-radius:6px;
+background:#6366f1;
+color:white;
+cursor:pointer;
+font-size:14px;
+}
+ 
+.create-folder-btn:hover{
+background:#4f46e5;
+}
+.folder-select{
+margin-top:10px;
+padding:6px 8px;
+border-radius:6px;
+border:1px solid #ddd;
+font-size:13px;
+cursor:pointer;
+}
+</style>
+<script>
+  window.addEventListener("pageshow", function (event) {
+    if (event.persisted) {
+      window.location.reload();
+    }
+  });
+</script>
+</head>
+ 
+ 
+<body>
+ 
+<h1>Templates</h1>
+<div class="section">
+ 
+<div class="section-title">Template Folder Settings</div>
+ 
+<div style="display:flex; gap:20px; margin-bottom:20px;">
+ 
+<div>
+<label><b>Initiate Mail Folder</b></label><br>
+<select id="initiateFolderSelect" class="folder-select">
+<option value="">Select folder</option>
+ 
+{% for folder in folders %}
+<option value="{{ folder.id }}">
+{% if folder.id==primary_folder_id%}
+selected{%endif%}
+{{ folder.displayName }}
+</option>
+{% endfor %}
+ 
+</select>
+</div>
+ 
+<div>
+<label><b>Follow-up Mail Folder</b></label><br>
+<select id="followupFolderSelect" class="folder-select">
+<option value="">Select folder</option>
+ 
+{% for folder in folders %}
+<option value="{{ folder.id }}">
+{% if folder.id==primary_folder_id%}
+selected{%endif%}
+{{ folder.displayName }}
+</option>
+{% endfor %}
+ 
+</select>
+</div>
+ 
+<button class="create-folder-btn" onclick="saveFolderSettings()">
+Save
+</button>
+ 
+</div>
+ 
+</div>
+<div class="folder-controls">
+ 
+<input
+type="text"
+id="folderNameInput"
+placeholder="Enter new folder name"
+class="folder-input"
+/>
+ 
+<button class="create-folder-btn" onclick="createFolder()">
+➕ Create Folder
+</button>
+ 
+</div>
+<div class="template-layout">
+ 
+<div class="folder-sidebar">
+ 
+<h3>Folders</h3>
+ 
+<ul>
+ 
+{% for folder_name, drafts in drafts_by_folder.items() %}
+ 
+<li
+onclick="showFolder('{{ folder_name }}')"
+class="folder-item"
+>
+ 
+<span class="folder-name">📁 {{ folder_name }}</span>
+ 
+<span class="folder-count">
+{{ drafts|length }}
+</span>
+ 
+</li>
+ 
+{% endfor %}
+ 
+</ul>
+ 
+</div>
+ 
+ 
+<div class="template-content">
+ 
+{% for folder_name, drafts in drafts_by_folder.items() %}
+ 
+<div class="folder-templates" id="folder-{{ folder_name }}">
+ 
+<h3>{{ folder_name }}</h3>
+ 
+<div class="draft-container">
+ 
+{% for draft in drafts %}
+ 
+<div class="draft-card">
+ 
+<div class="subject">{{ draft.subject }}</div>
+ 
+<div class="preview">{{ draft.bodyPreview }}</div>
+ 
+<div class="button-row">
+ 
+<button class="action-btn"
+onclick="previewTemplate('{{ draft.id }}')">
+👁 Preview
+</button>
+ 
+<select 
+class="folder-select"
+onchange="moveTemplate('{{ draft.id }}', this.value)"
+>
+ 
+<option value="">Move to folder</option>
+ 
+{% for folder in folders %}
+ 
+<option 
+value="{{ folder.id }}"
+{% if folder.id == draft.parentFolderId %}disabled{% endif %}
+>
+{{ folder.displayName }}
+</option>
+ 
+{% endfor %}
+ 
+</select>
+ 
+</div>
+ 
+</div>
+ 
+{% endfor %}
+ 
+</div>
+ 
+</div>
+ 
+{% endfor %}
+ 
+</div>
+ 
+</div>
+ 
+ 
+
+<div id="previewModal" class="modal">
+ 
+<div class="modal-content">
+ 
+<div class="modal-header">
+ 
+<h2 id="previewSubject"></h2>
+ 
+<button onclick="closePreview()" class="close-btn">✖</button>
+ 
+</div>
+ 
+<div class="email-meta">
+ 
+<p><strong>To:</strong> <span id="previewTo"></span></p>
+<p><strong>CC:</strong> <span id="previewCc"></span></p>
+ 
+</div>
+ 
+<hr class="email-divider">
+ 
+<div id="previewBody" class="email-body"></div>
+ 
+</div>
+ 
+</div>
+<style>
+
+.folder-item{
+display:flex;
+justify-content:space-between;
+align-items:center;
+padding:8px 10px;
+border-radius:6px;
+cursor:pointer;
+margin-bottom:6px;
+}
+ 
+.folder-item:hover{
+background:#eef2ff;
+}
+ 
+.folder-count{
+background:#e5e7eb;
+padding:2px 8px;
+border-radius:10px;
+font-size:12px;
+font-weight:500;
+}
+.folder-controls{
+margin-bottom:20px;
+}
+ 
+.create-folder-btn{
+padding:8px 16px;
+border:none;
+border-radius:8px;
+background:#6366f1;
+color:white;
+cursor:pointer;
+font-size:14px;
+}
+.template-layout{
+display:flex;
+gap:20px;
+margin-top:20px;
+}
+ 
+.folder-sidebar{
+width:220px;
+background:#f9fafb;
+border-radius:10px;
+padding:15px;
+border:1px solid #e5e7eb;
+}
+ 
+.folder-sidebar ul{
+list-style:none;
+padding:0;
+margin-top:10px;
+}
+ 
+.folder-item{
+padding:8px 10px;
+border-radius:6px;
+cursor:pointer;
+margin-bottom:5px;
+}
+ 
+.folder-item:hover{
+background:#eef2ff;
+}
+ 
+.template-content{
+flex:1;
+}
+ 
+.folder-templates{
+display:none;
+}
+ 
+.create-folder-btn:hover{
+background:#4f46e5;
+}
+.modal{
+display:none;
+position:fixed;
+top:0;
+left:0;
+width:100%;
+height:100%;
+background:rgba(0,0,0,0.6);
+z-index:1000;
+}
+ 
+.modal-content{
+background:white;
+width:55%;
+max-width:750px;
+margin:80px auto;
+border-radius:12px;
+padding:25px;
+max-height:80%;
+overflow:auto;
+box-shadow:0 10px 30px rgba(0,0,0,0.25);
+animation:popup 0.2s ease;
+}
+@keyframes popup{
+from{
+transform:scale(0.95);
+opacity:0;
+}
+to{
+transform:scale(1);
+opacity:1;
+}
+}
+ 
+.modal-header{
+display:flex;
+justify-content:space-between;
+align-items:center;
+margin-bottom:10px;
+}
+.active-folder{
+background:#e0e7ff;
+font-weight:600;
+}
+.modal-header h2{
+font-size:22px;
+font-weight:600;
+margin:0;
+color:#333;
+}
+ 
+.close-btn{
+border:none;
+background:#f3f4f6;
+padding:6px 10px;
+border-radius:6px;
+cursor:pointer;
+font-size:14px;
+}
+ 
+.close-btn:hover{
+background:#e5e7eb;
+}
+ 
+.email-meta{
+background:#f8f9fc;
+padding:12px;
+border-radius:8px;
+margin-top:12px;
+font-size:14px;
+line-height:1.6;
+border:1px solid #e4e6ef;
+}
+ 
+.email-meta strong{
+color:#444;
+width:40px;
+display:inline-block;
+}
+ 
+.email-body{
+margin-top:15px;
+padding:18px;
+background:#ffffff;
+border-radius:8px;
+border:1px solid #e5e7eb;
+line-height:1.6;
+font-size:15px;
+color:#333;
+}
+.email-divider{
+margin:18px 0;
+border:none;
+border-top:1px solid #e5e7eb;
+}
+.action-btn{
+margin-top:12px;
+padding:6px 14px;
+font-size:13px;
+border:none;
+border-radius:6px;
+cursor:pointer;
+background:#4a6cf7;
+color:white;
+transition:0.2s;
+}
+ 
+.action-btn:hover{
+background:#3451d1;
+transform:translateY(-1px);
+}
+</style>
+ 
+<br>
+ 
+</div>
+</div>
+ 
+<script>
+    function saveFolderSettings(){
+ 
+let initiateFolder = document.getElementById("initiateFolderSelect").value
+let followupFolder = document.getElementById("followupFolderSelect").value
+ 
+if(!initiateFolder || !followupFolder){
+alert("Please select both folders")
+return
+}
+ 
+fetch("/save_template_folders",{
+method:"POST",
+headers:{
+"Content-Type":"application/json"
+},
+body:JSON.stringify({
+primary_folder_id:initiateFolder,
+secondary_folder_id:followupFolder
+})
+})
+.then(res=>res.json())
+.then(data=>{
+alert("Folder settings saved")
+})
+ 
+}
+ 
+function previewTemplate(id){
+ 
+fetch("/template_preview/" + id)
+.then(res => res.json())
+.then(data => {
+ 
+document.getElementById("previewSubject").innerText = data.subject
+ 
+document.getElementById("previewTo").innerText = data.to.length?data.to.join(", "):"None";
+ 
+document.getElementById("previewCc").innerText = data.cc.length?data.cc.join(", "):"None";
+ 
+document.getElementById("previewBody").innerHTML = data.body
+ 
+document.getElementById("previewModal").style.display = "block"
+ 
+})
+ 
+}
+
+function showFolder(folderName){
+ 
+document.querySelectorAll(".folder-templates").forEach(el=>{
+el.style.display="none"
+})
+ 
+document.getElementById("folder-"+folderName).style.display="block"
+ 
+document.querySelectorAll(".folder-item").forEach(el=>{
+el.classList.remove("active-folder")
+})
+ 
+event.currentTarget.classList.add("active-folder")
+ 
+}
+ 
+function closePreview(){
+ 
+document.getElementById("previewModal").style.display = "none"
+ 
+}
+
+function moveTemplate(messageId, folderId){
+
+if(!folderId) return
+fetch("/move_template",{
+method:"POST",
+headers:{
+"Content-Type":"application/json"
+},
+body:JSON.stringify({
+message_id:messageId,
+folder_id:folderId
+})
+})
+.then(res=>res.json())
+.then(data=>{
+ 
+alert("Template moved successfully")
+ 
+location.reload()
+ 
+})
+ 
+}
+
+function createFolder(){
+ 
+let folderName = document.getElementById("folderNameInput").value.trim()
+ 
+if(!folderName){
+alert("Please enter folder name")
+return
+}
+ 
+fetch("/create_template_folder",{
+method:"POST",
+headers:{
+"Content-Type":"application/json"
+},
+body:JSON.stringify({
+folder_name:folderName
+})
+})
+.then(res=>res.json())
+.then(data=>{
+ 
+alert("Folder created successfully")
+ 
+location.reload()
+ 
+})
+ 
+}
+ 
+</script>
+ 
+ 
+ 
+</body>
+</html>
+ 
