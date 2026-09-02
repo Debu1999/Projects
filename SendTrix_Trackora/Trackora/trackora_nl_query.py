@@ -8,15 +8,20 @@ sent to Gemini; Gemini's only job is to translate the question into a
 SQL query, which your own code then runs locally against the real database.
 
 Safety design:
-    Only SELECT statements are ever allowed to execute. Even if the model
-    ever generated something else (by mistake or a malformed response),
-    it gets rejected before touching the database.
+    - Only SELECT statements are ever allowed to execute. Even if the model
+      ever generated something else (by mistake or a malformed response),
+      it gets rejected before touching the database.
+    - Only applications_snapshot may be referenced; a query touching any
+      other table is rejected outright.
+    - Every query is forcibly scoped to the current user's own rows in
+      code (scope_query_to_user()), regardless of whether the AI-generated
+      SQL remembered to filter by user_id itself -- the AI is never trusted
+      to enforce isolation on its own.
 """
 
 import os
 import re
 import json
-import sqlite3
 import requests
 from dotenv import load_dotenv
 
@@ -64,7 +69,7 @@ Notes:
   remediation_due_date vs today's date, depending on the question.
 """
 
-PROMPT_TEMPLATE = """You are a SQL assistant for a SQLite database. You will
+PROMPT_TEMPLATE = """You are a SQL assistant for a PostgreSQL database. You will
 be given a table schema and a plain-English question. Convert the question
 into a single, valid, read-only SQL query.
 
@@ -76,8 +81,10 @@ Rules:
 - Use only the table and columns described above - do not invent columns.
 - If the question can't be answered with this schema, say so in the
   "explanation" field and leave "sql" as an empty string.
-- Use SQLite date functions where relevant (dates are stored as ISO text,
-  e.g. julianday(), date('now'), etc.)
+- This is PostgreSQL, not SQLite: dates are stored as ISO text, so cast
+  with column::date where needed, and use PostgreSQL date functions
+  (CURRENT_DATE, now(), AGE(), EXTRACT(...), INTERVAL) rather than SQLite
+  functions like julianday() or date('now'), which do not exist here.
 - For name-like text fields (owner_name, tech_owner_name, appser_name,
   vendor_name, reviewer_id, u_run_operations_focal), NEVER use an exact
   match. Always use: LOWER(column) LIKE LOWER('%value%') - since the
@@ -137,10 +144,24 @@ FORBIDDEN_KEYWORDS = [
     "pragma", "create", "replace", "truncate", "vacuum", "reindex",
 ]
 
+# Every other table in the schema -- if any of these appear in a generated
+# query, reject it. The AI is only ever shown applications_snapshot in its
+# schema description, so a reference to any of these means either a model
+# mistake or an attempt to reach data outside what was described.
+OTHER_KNOWN_TABLES = [
+    "users", "user_token_caches", "settings", "category_templates",
+    "folder_settings", "followups", "activity_logs", "workspaces",
+    "workspace_conversations", "uploads", "applications_raw_data",
+    "comparison_logs", "comparison_changes", "application_comments",
+    "master_control", "application_analysis", "evidence_uploads",
+    "application_meetings", "action_template_mapping", "application_mail_config",
+]
+
 
 def is_safe_select(sql):
     """
-    Returns True only if this looks like a single, safe SELECT statement.
+    Returns True only if this looks like a single, safe SELECT statement
+    that references only applications_snapshot.
     """
     if not sql:
         return False
@@ -151,10 +172,16 @@ def is_safe_select(sql):
     if not re.match(r"^\s*select\b", cleaned, re.IGNORECASE):
         return False
 
-    # Must not contain any forbidden keywords anywhere in the query
     lowered = cleaned.lower()
+
+    # Must not contain any forbidden keywords anywhere in the query
     for keyword in FORBIDDEN_KEYWORDS:
         if re.search(rf"\b{keyword}\b", lowered):
+            return False
+
+    # Must not reference any table other than applications_snapshot
+    for table in OTHER_KNOWN_TABLES:
+        if re.search(rf"\b{table}\b", lowered):
             return False
 
     # Must not contain a semicolon in the middle (blocks stacked statements)
@@ -162,6 +189,31 @@ def is_safe_select(sql):
         return False
 
     return True
+
+
+def scope_query_to_user(sql, user_id):
+    """
+    Rewrites the AI-generated query so it can only ever see this user's
+    own rows in applications_snapshot -- regardless of whether the
+    generated SQL remembered to filter by user_id itself.
+
+    Wraps applications_snapshot in a CTE pre-filtered to the current
+    user, then redirects every reference to applications_snapshot in the
+    AI's query to that CTE instead of the real table.
+    """
+    scoped_sql = re.sub(
+        r"\bapplications_snapshot\b",
+        "scoped_applications_snapshot",
+        sql,
+        flags=re.IGNORECASE,
+    )
+    wrapped = (
+        "WITH scoped_applications_snapshot AS ("
+        "SELECT * FROM applications_snapshot WHERE user_id = %(user_id)s"
+        ") "
+        + scoped_sql
+    )
+    return wrapped
 
 
 def natural_language_to_sql(question):
@@ -180,26 +232,41 @@ def natural_language_to_sql(question):
     return parsed
 
 
-def run_safe_query(sql, db_connection_getter):
+def run_safe_query(sql, db_connection_getter, user_id):
     """
-    Executes the given SQL only if it passes is_safe_select().
+    Executes the given SQL only if it passes is_safe_select(), and only
+    ever against this user's own rows -- user_id is enforced here in code,
+    not left to the AI-generated query to remember on its own (an earlier
+    version relied on that implicitly and could have returned every
+    user's data; see scope_query_to_user()).
+
     db_connection_getter should be your existing get_connection() function
-    from db.py, so this reuses your normal DB connection setup.
+    from db_core.py, so this reuses your normal DB connection setup.
 
     Returns: {"success": bool, "rows": list, "columns": list, "error": str}
     """
+    if not user_id:
+        return {
+            "success": False,
+            "rows": [],
+            "columns": [],
+            "error": "No authenticated user -- query rejected.",
+        }
+
     if not is_safe_select(sql):
         return {
             "success": False,
             "rows": [],
             "columns": [],
-            "error": "Query rejected - only simple SELECT statements are allowed.",
+            "error": "Query rejected - only simple SELECT statements against applications_snapshot are allowed.",
         }
+
+    scoped_sql = scope_query_to_user(sql, user_id)
 
     try:
         conn = db_connection_getter()
         cursor = conn.cursor()
-        cursor.execute(sql)
+        cursor.execute(scoped_sql, {"user_id": user_id})
         rows = cursor.fetchall()
         columns = [desc[0] for desc in cursor.description] if cursor.description else []
         conn.close()

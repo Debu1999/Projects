@@ -164,15 +164,14 @@ def clean_email_body(html_body):
 
 REPLY_ANALYSIS_PROMPT_TEMPLATE = """You are helping an analyst reply to a client email.
 
-IMPORTANT: The CLIENT is the person at this email address: {client_email}
-The analyst (your user) is the one who originally sent the thread and is
-NOT the client, even if the client mentions the analyst's name in their reply.
-Do not confuse the two - always write the response addressed TO the client
-at {client_email}, from the analyst's perspective.
+The analyst is the one who originally sent this thread; you are drafting
+their reply back to whoever sent the message below. Base your response
+only on the conversation content \u2014 do not reference or infer any
+identity beyond what is written in the message itself.
 
 Context:
 - Original thread subject: {subject}
-- Client's latest reply (plain text): "{body}"
+- Latest reply in this thread (plain text): "{body}"
 
 Analyze this reply and suggest a response.
 
@@ -204,11 +203,11 @@ Respond ONLY in this JSON format, no other text, no markdown fences:
 """
 
 
-def analyze_reply(subject, clean_body, client_email):
+def analyze_reply(subject, clean_body):
     """
     Called after a client reply is detected (body already cleaned of HTML).
-    client_email identifies who the client actually is, so the model
-    doesn't have to guess this from the message content.
+    Sends only subject + message body to Gemini -- no client identity
+    (name/email) is included in the prompt.
     Returns: {"classification": str, "reasoning": str, "draft_body": str}
     Returns None if the Gemini call fails - caller should leave the
     conversation paused with no analysis (safe default, matches old behavior).
@@ -216,7 +215,6 @@ def analyze_reply(subject, clean_body, client_email):
     prompt = REPLY_ANALYSIS_PROMPT_TEMPLATE.format(
         subject=subject or "(no subject)",
         body=(clean_body or "")[:2000],
-        client_email=client_email or "(unknown)",
     )
     raw_response = call_gemini(prompt)
     parsed = try_parse_json(raw_response)
