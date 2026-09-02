@@ -1134,7 +1134,8 @@ function downloadNlResults() {
                     </th>
                     <th>ASN</th>
                     <th>Name</th>
-                    <th>Status</th>
+                    <!--<th>Status</th>-->
+                    <th>SBG</th>
                     <th>Owner</th>
                     <th>Tech Owner</th>
                     <th>Version</th>
@@ -1143,7 +1144,7 @@ function downloadNlResults() {
                     <th>Frequency</th>
                     <th>Start Date</th>
                     <th>Due Date</th>
-                    <th>Evidence</th>
+                    <!--<th>Evidence</th>-->
                     <th>Countdown</th>
                     <th>Exception Reason</th>
                     <th>Comments</th>
@@ -1151,7 +1152,7 @@ function downloadNlResults() {
                     <th>Vendor Status</th>
                     <th>Recommended Action</th>
                     <th>Action Status</th>
-                    <th>Meeting</th>
+                    <!--<th>Meeting</th>-->
                     <th>Edit Configuration</th>
                     <th>Mail Status</th>
                     <th>Track Mail</th>
@@ -1692,7 +1693,7 @@ async function loadMaster() {
  
 <td>${row.asn}</td>
 <td>${row.name}</td>
-<td>${row.status}</td>
+<td>${row.so_u_sbg}</td>
 <td>${row.owner}</td>
 <td>${row.tech_owner}</td>
 <td>${row.version}</td>
@@ -1766,27 +1767,7 @@ class="remediation-date"
 value="${row.remediation_due_date || ''}">
  
 </td>
-<!-- EVIDENCE -->
- 
-<td>
- 
-<button
-class="secondary-btn"
-onclick="uploadEvidence('${row.asn}')">
- 
-📤 Upload
- 
-</button>
 
-<button
-class="secondary-btn"
-onclick="viewEvidence('${row.asn}')">
- 
-👁 View
- 
-</button>
- 
-</td>
 <!-- COUNTDOWN -->
 <td
 class="countdown"
@@ -1905,30 +1886,6 @@ ${row.recommended_action || "MANUAL_REVIEW"}
 ${row.action_status || ""}
  
 </td>
-<td>
- 
-<button
-onclick="openMeetingModal('${row.asn}')">
- 
-📅 Schedule
- 
-</button>
- 
-<br>
- 
-<small>
- 
-${row.meeting_status || "NOT SCHEDULED"}
-
-<br>
-${row.meeting_start? row.meeting_start.replace("T","").substring(0,16):""}
-<br>
-${row.meeting_link?`<a href="${row.meeting_link}" target="_blank">Join</a>`:""}
- 
-</small>
- 
-</td>
- 
  
 <!-- ACTION -->
  
@@ -2714,7 +2671,7 @@ async function loadDrafts() {
   });
 }
 async function loadCategories() {
-  const res = await fetch("api/categories"); // your existing route
+  const res = await fetch("/api/categories"); // your existing route
   const categories = await res.json();
  
   window.ALL_CATEGORIES = categories;
@@ -3575,3 +3532,50 @@ async function uploadSelectedEvidence() {
 </script>
  
 {% endblock %}
+
+<!--MEETING SCHEDULING BUTTONS
+<td>
+<button
+onclick="openMeetingModal('${row.asn}')">
+ 
+📅 Schedule
+ 
+</button>
+ 
+<br>
+ 
+<small>
+ 
+${row.meeting_status || "NOT SCHEDULED"}
+
+<br>
+${row.meeting_start? row.meeting_start.replace("T","").substring(0,16):""}
+<br>
+${row.meeting_link?`<a href="${row.meeting_link}" target="_blank">Join</a>`:""}
+ 
+</small>
+ 
+</td>-->
+
+
+<!-- EVIDENCE UPLOAD BUTTONS
+ 
+<td>
+ 
+<button
+class="secondary-btn"
+onclick="uploadEvidence('${row.asn}')">
+ 
+📤 Upload
+ 
+</button>
+
+<button
+class="secondary-btn"
+onclick="viewEvidence('${row.asn}')">
+ 
+👁 View
+ 
+</button>
+ 
+</td>-->

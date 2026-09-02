@@ -327,8 +327,8 @@ def get_category_details(category_name,version):
         SUM(CASE WHEN status='MANUAL_PAUSED' THEN 1 ELSE 0 END),
         SUM(CASE WHEN status='COMPLETED' THEN 1 ELSE 0 END)
     FROM followups
-    WHERE user_id = %s AND category_name = %s
-    """, (user_id, category_name))
+    WHERE user_id = %s AND category_name = %s AND category_version=%s
+    """, (user_id, category_name, version))
  
     stats = cursor.fetchone()
     total, active, client_paused,manual_paused, completed = stats or (0,0,0,0,0)

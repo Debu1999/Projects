@@ -51,7 +51,7 @@ def compute_compliance_summary(upload_id, conn):
         FROM applications_snapshot s
         LEFT JOIN application_analysis a
             ON s.appser_number = a.appser_number AND s.upload_id = a.upload_id
-        WHERE s.upload_id = ?
+        WHERE s.upload_id = %s
     """, (upload_id,))
     rows = cursor.fetchall()
 

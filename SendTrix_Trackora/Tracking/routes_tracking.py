@@ -83,8 +83,8 @@ def pause(id):
  
     cursor.execute("""
         UPDATE followups
-        SET status='MANUAL_PAUSED', updated_at=?
-        WHERE id=?
+        SET status='MANUAL_PAUSED', updated_at=%s
+        WHERE id=%s
     """, (datetime.now(timezone.utc), id))
  
     conn.commit()
@@ -168,7 +168,7 @@ def toggle_auto_followup(id):
     cursor.execute("SELECT conversation_id, auto_followup_enabled FROM followups WHERE id = %s", (id,))
     conversation_id, current = cursor.fetchone()
     new_value = 0 if current else 1
-    cursor.execute("UPDATE followups SET auto_followup_enabled = ? WHERE id = ?", (new_value, id))
+    cursor.execute("UPDATE followups SET auto_followup_enabled = %s WHERE id = %s", (new_value, id))
     conn.commit()
     conn.close()
     log_activity(id, f"Auto-followup toggled {'ON' if new_value else 'OFF'} by user")

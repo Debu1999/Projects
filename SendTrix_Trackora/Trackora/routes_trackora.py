@@ -1,11 +1,12 @@
 from flask_server import app
-import io,os
+import io,os,csv
 import pandas as pd
 from datetime import datetime, timedelta, timezone
 from flask import render_template,request,jsonify,send_file
 import requests
+from openpyxl.utils import get_column_letter
 from .trackora_nl_query import natural_language_to_sql,run_safe_query,is_safe_select
-from db import get_connection
+from db import get_connection, get_current_user_id
 from Categories.category_service import get_template_folders
 from Bulk_Email.draft_bulk_sender import send_bulk_from_draft
 from graph_client import get_followup_drafts
@@ -506,7 +507,7 @@ def get_master_data():
         SELECT 
             s.appser_number,
             s.appser_name,
-            s.appser_install_status,
+            s.so_u_sbg,
             s.owner_name,
             s.tech_owner_name,
             s.current_installed_version,
@@ -528,11 +529,7 @@ def get_master_data():
             a.send_status,
 
             m.draft_id,
-            m.category,
-
-            mt.meeting_status,
-            mt.meeting_start,
-            mt.meeting_link
+            m.category
  
         FROM applications_snapshot s
         LEFT JOIN application_analysis a
@@ -542,14 +539,6 @@ def get_master_data():
         LEFT JOIN application_mail_config m
         ON s.appser_number=m.appser_number
         AND s.upload_id=m.upload_id
-
-        LEFT JOIN application_meetings mt
-        ON mt.id = (
-        SELECT MAX(id)
-        FROM application_meetings x
-        WHERE x.appser_number = s.appser_number
-        AND x.upload_id = s.upload_id
-        )
  
  
         WHERE s.upload_id = %s
@@ -563,7 +552,7 @@ def get_master_data():
         data.append({
             "asn": r[0],
             "name": r[1],
-            "status": r[2],
+            "so_u_sbg": r[2],
             "owner": r[3],
             "tech_owner": r[4],
             "version": r[5],
@@ -572,7 +561,7 @@ def get_master_data():
  
             "frequency": r[7] or "",
             "frequency_unit":r[8] or "",
-            "review_start_date":r[9] or "",
+            "review_start_date": r[9].strftime("%Y-%m-%d") if r[9] else "",
             "next_due_date":r[10] or "",
             "comments": r[11] or "",
             "internal_status": r[12] or "",
@@ -587,10 +576,6 @@ def get_master_data():
 
             "draft_id":r[21] or "",
             "category":r[22] or "",
-
-            "meeting_status":r[23] or "",
-            "meeting_start":r[24] or "",
-            "meeting_link":r[25] or ""
         })
     print(data[0])
  
@@ -617,36 +602,32 @@ def download_master_data():
     # Same JOIN as get_master_data()
     cursor.execute("""
         SELECT
-            s.appser_number, s.appser_name, s.appser_install_status,
+            s.appser_number, s.appser_name, s.so_u_sbg,
             s.owner_name, s.tech_owner_name, s.current_installed_version,
             s.vendor_name,
             a.compliance_mode, a.frequency, a.frequency_unit,
             a.review_start_date, a.remediation_due_date, a.next_due_date,
             a.exception_reason, a.comments, a.internal_status,
             a.vendor_status, a.recommended_action, a.action_status,
-            a.send_status,
-            mt.meeting_status, mt.meeting_start
+            a.send_status
         FROM applications_snapshot s
         LEFT JOIN application_analysis a
             ON s.appser_number = a.appser_number AND s.upload_id = a.upload_id
-        LEFT JOIN application_meetings mt
-            ON mt.id = (
-                SELECT MAX(id) FROM application_meetings x
-                WHERE x.appser_number = s.appser_number AND x.upload_id = s.upload_id
-            )
         WHERE s.upload_id = %s
     """, (upload_id,))
 
     rows = cursor.fetchall()
 
     columns = [
-        "ASN", "Name", "Status", "Owner", "Tech Owner", "Version", "Vendor",
+        "ASN", "Name", "SBG", "Owner", "Tech Owner", "Version", "Vendor",
         "Mode", "Frequency", "Frequency Unit", "Start Date", "Due Date",
         "Next Due Date", "Exception Reason", "Comments", "Internal Status",
         "Vendor Status", "Recommended Action", "Action Status", "Mail Status",
-        "Meeting Status", "Meeting Start"
     ]
     df = pd.DataFrame(rows, columns=columns)
+    for col in df.columns:
+        if pd.api.types.is_datetime64_any_dtype(df[col]):
+            df[col] = df[col].dt.tz_localize(None)
 
     # --- NEW: compute summary + AI narrative ---
     summary = compute_compliance_summary(upload_id, conn)
@@ -678,11 +659,27 @@ def download_master_data():
     summary_rows.append(["AI Summary", narrative])
 
     summary_df = pd.DataFrame(summary_rows, columns=["Metric", "Value"])
-
+    for col in summary_df.columns:
+        if pd.api.types.is_datetime64_any_dtype(summary_df[col]):
+            summary_df[col] = summary_df[col].dt.tz_localize(None)
     output = BytesIO()
     with pd.ExcelWriter(output, engine="openpyxl") as writer:
         summary_df.to_excel(writer, index=False, sheet_name="Summary")
         df.to_excel(writer, index=False, sheet_name="Master Analysis")
+        # Auto-size columns on both sheets
+        def safe_len(x):
+            if pd.isna(x):
+                return 0
+            return len(str(x))
+
+        for sheet_name, sheet_df in [("Summary", summary_df), ("Master Analysis", df)]:
+            worksheet = writer.sheets[sheet_name]
+            for i, col in enumerate(sheet_df.columns, start=1):
+                if len(sheet_df) > 0:
+                    max_len = max(sheet_df[col].apply(safe_len).max(), len(str(col)))
+                else:
+                    max_len = len(str(col))
+                worksheet.column_dimensions[get_column_letter(i)].width = max_len + 4
     output.seek(0)
 
     filename = f"Trackora_Master_{datetime.now().strftime('%Y%m%d_%H%M')}.xlsx"
@@ -766,11 +763,13 @@ def save_analysis():
         if frequency_unit=="minutes":
             start_dt=now
         else:
-            start_dt = now
-            print("REVIEW_START_DATE =", repr(review_start_date))
-            print("START_DT_TYPE =", type(start_dt))
-            print("START_DT_VALUE =", repr(start_dt))
-            print("REVIEW_START_DATE:",review_start_date,"START_DATE:",start_dt)
+            try:
+                start_dt = datetime.fromisoformat(str(review_start_date))
+                if start_dt.tzinfo is None:
+                    start_dt = start_dt.replace(tzinfo=timezone.utc)
+            except Exception as e:
+                print("Failed to parse review_start_date, falling back to now:", e)
+                start_dt = now
         last_reviewed_date = review_start_date
         if frequency_unit == "minutes":
             next_due_date = (
@@ -798,8 +797,8 @@ def save_analysis():
     recommended_action,
     action_status
     FROM application_analysis
-    WHERE upload_id = ?
-    AND appser_number = ?
+    WHERE upload_id = %s
+    AND appser_number = %s
     """, (
         upload_id,
         appser_number
@@ -1367,6 +1366,7 @@ def generate_consolidated(comparison_id):
 def upload_application_file():
     import time
     import os
+    user_id=get_current_user_id()
  
     file = request.files.get("file")
 
@@ -1397,11 +1397,11 @@ def upload_application_file():
  
     # ✅ Save upload record
     cursor.execute("""
-    INSERT INTO uploads (file_name, stored_name, created_at)
-    VALUES (%s, %s, %s)
-    """, (original_name, unique_name, now))
+    INSERT INTO uploads (file_name, stored_name, created_at,user_id)
+    VALUES (%s, %s, %s,%s)RETURNING id
+    """, (original_name, unique_name, now, user_id))
  
-    upload_id = cursor.lastrowid
+    upload_id = cursor.fetchone()[0]
     conn.commit()
     conn.close()
  
@@ -1431,15 +1431,15 @@ def upload_application_file():
     cursor.execute("""
     SELECT COUNT(*)
     FROM applications_raw_data
-    WHERE upload_id = %s
-    """, (upload_id,))
+    WHERE upload_id = %s AND user_id = %s
+    """, (upload_id, user_id))
     raw_count = cursor.fetchone()[0]
     
     cursor.execute("""
     SELECT COUNT(*)
     FROM applications_snapshot
-    WHERE upload_id = %s
-    """, (upload_id,))
+    WHERE upload_id = %s AND user_id = %s
+    """, (upload_id, user_id))
     snapshot_count = cursor.fetchone()[0]
     
     print(

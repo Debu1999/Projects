@@ -164,7 +164,83 @@ def insert_snapshot_bulk(cursor, upload_id, row):
         now,
         user_id
     ))
-
+def insert_raw_snapshot(cursor,upload_id, row):
+ 
+    import json
+    from datetime import datetime, timezone
+    user_id=get_current_user_id()
+ 
+    now = datetime.now(timezone.utc).isoformat()
+ 
+    appser_number = str(
+        row.get("appser_number", "")
+    ).strip()
+ 
+    cursor.execute("""
+    INSERT INTO applications_raw_data (
+        upload_id,
+        appser_number,
+        row_data,
+        created_at,
+        user_id
+    )
+    VALUES (%s, %s, %s, %s,%s)
+    """, (
+        upload_id,
+        appser_number,
+        json.dumps(row),
+        now,
+        user_id
+    ))
+def insert_snapshot(cursor,upload_id, row):
+ 
+    now = datetime.now(timezone.utc).isoformat()
+    user_id=get_current_user_id()
+ 
+    if not row.get("appser_number"):
+        return
+ 
+    cursor.execute("""
+    INSERT INTO applications_snapshot (
+        upload_id,
+        appser_number,
+        appser_name,
+        appser_install_status,
+        so_u_sbg,
+        owner_name,
+        tech_owner_name,
+        current_installed_version,
+        vendor_name,
+        reviewer_id,
+        reviewed_date,
+        u_run_operations_focal,
+        compliance_mode,
+        remediation_due_date,
+        exception_reason,
+        status,
+        created_at,
+        user_id
+    )
+    VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, 'ACTIVE', %s,%s)
+    """, (
+        upload_id,
+        row.get("appser_number"),
+        row.get("appser_name"),
+        row.get("appser_install_status"),
+        row.get("so_u_sbg"),
+        row.get("owner_name"),
+        row.get("tech_owner_name"),
+        row.get("current_installed_version"),
+        row.get("vendor_name"),
+        row.get("reviewer_id"),
+        now,
+        row.get("u_run_operations_focal"),
+        row.get("compliance_mode","FREQUENCY"),
+        row.get("remediation_due_date",""),
+        row.get("exception_reason",""),
+        now,
+        user_id
+    ))
 def insert_raw_snapshot_bulk(
     cursor,
     upload_id,
@@ -322,7 +398,7 @@ def create_comparison(cursor,master_upload_id, target_upload_id,master_count,tar
  
     cursor.execute("""
         INSERT INTO comparison_logs (from_upload_id,to_upload_id,created_at,master_count,target_count,user_id)
-        VALUES (%s, %s, %s, %s, %s,%s)
+        VALUES (%s, %s, %s, %s, %s,%s)RETURNING id
     """, (master_upload_id,target_upload_id, now,master_count,target_count,user_id))
  
     return cursor.fetchone()[0]
@@ -680,7 +756,7 @@ def initialize_or_carry_analysis(old_master_id, new_master_id):
             print("COPYING ASN:",asn)
             print(data)
             cols = ",".join(data.keys())
-            placeholders = ",".join(["?"] * len(data))
+            placeholders = ",".join(["%s"] * len(data))
             cursor.execute(f"""
             INSERT INTO application_analysis
             ({cols})
@@ -732,15 +808,20 @@ def run_compliance_engine(upload_id):
  
         if not next_due:
             continue
- 
-        try:
-            next_due_dt = datetime.fromisoformat(next_due)
-            if next_due_dt.tzinfo is None:
-                next_due_dt=next_due_dt.replace(tzinfo=timezone.utc)
-        except Exception as e:
-            print("Data parse error:",e)
+        if isinstance(next_due, str):
+            try:
+                next_due_dt = datetime.fromisoformat(next_due)
+            except Exception as e:
+                print("Data parse error:", e)
+                continue
+        elif isinstance(next_due, datetime):
+            next_due_dt = next_due
+        else:
+            print("Unexpected next_due_date type:", type(next_due), "for", asn)
             continue
-        print("CHECK:",asn,now,next_due_dt,status)
+        if next_due_dt.tzinfo is None:
+            next_due_dt = next_due_dt.replace(tzinfo=timezone.utc)
+        print("CHECK:", asn, now, next_due_dt, status)
  
         # 🔥 CORRECT COMPARISON
         if now > next_due_dt and status == "Compliant":
