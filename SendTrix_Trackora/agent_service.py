@@ -150,15 +150,46 @@ def get_agent_followup_decision(
 import re
 
 
+REPLY_BOUNDARY_PATTERNS = [
+    r"get outlook for (ios|android)",
+    r"sent from my (iphone|android|samsung|mobile)",
+    r"on\s.{0,60}\swrote:",
+    r"_{10,}",
+    r"-{3,}\s*original message\s*-{3,}",
+    r"from:\s*.{0,80}sent:\s*.{0,80}to:\s*.{0,80}subject:",
+]
+
+
+def strip_reply_footer_and_quote(text):
+    """
+    Truncates text at the first sign of a mobile-client signature
+    (e.g. "Get Outlook for Android") or a quoted reply chain
+    (e.g. "On ... wrote:", "From: ... Sent: ... To: ... Subject:"),
+    keeping only the person's actual new reply content.
+    """
+    if not text:
+        return ""
+
+    earliest_cut = len(text)
+    for pattern in REPLY_BOUNDARY_PATTERNS:
+        match = re.search(pattern, text, re.IGNORECASE)
+        if match and match.start() < earliest_cut:
+            earliest_cut = match.start()
+
+    return text[:earliest_cut].strip()
+
+
 def clean_email_body(html_body):
     """
-    Strips HTML tags and extra whitespace from an Outlook message body,
-    so we send clean plain text to Gemini instead of raw HTML markup.
+    Strips HTML tags, cuts off mobile signatures / quoted reply chains,
+    and collapses extra whitespace, so Gemini only ever sees the
+    person's actual new message.
     """
     if not html_body:
         return ""
-    text = re.sub(r"<[^>]+>", " ", html_body)   # remove tags
-    text = re.sub(r"\s+", " ", text)            # collapse whitespace
+    text = re.sub(r"<[^>]+>", " ", html_body)        # remove tags
+    text = strip_reply_footer_and_quote(text)         # cut at footer/quote boundary
+    text = re.sub(r"\s+", " ", text)                  # collapse whitespace
     return text.strip()
 
 
@@ -203,7 +234,7 @@ Respond ONLY in this JSON format, no other text, no markdown fences:
 """
 
 
-def analyze_reply(subject, clean_body):
+def analyze_reply(subject, clean_body,client_email=None):
     """
     Called after a client reply is detected (body already cleaned of HTML).
     Sends only subject + message body to Gemini -- no client identity
