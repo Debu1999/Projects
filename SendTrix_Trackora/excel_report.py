@@ -34,6 +34,7 @@ def generate_comparison_excel(
 
     conn = get_connection()
     cursor = conn.cursor()
+    user_id=get_current_user_id()
 
     cursor.execute("""
     SELECT
@@ -43,8 +44,8 @@ def generate_comparison_excel(
         new_value,
         change_type
     FROM comparison_changes
-    WHERE comparison_id = %s
-    """, (comparison_id,))
+    WHERE comparison_id = %s AND user_id = %s
+    """, (comparison_id,user_id))
 
     changes = cursor.fetchall()
 
@@ -265,6 +266,7 @@ def generate_comparison_excel(
 def generate_final_approved_excel(comparison_id):
 
     conn = get_connection()
+    user_id = get_current_user_id()
 
     query = """
     SELECT
@@ -275,13 +277,13 @@ def generate_final_approved_excel(comparison_id):
         change_type,
         approval_status
     FROM comparison_changes
-    WHERE comparison_id = %s
+    WHERE comparison_id = %s AND user_id = %s
     """
 
     df = pd.read_sql_query(
         query,
         conn,
-        params=(comparison_id,)
+        params=(comparison_id, user_id)
     )
 
     conn.close()
@@ -501,6 +503,7 @@ def generate_excel_from_upload(upload_id,comparison_id):
     print("TOTAL ROWS:",len(data))
     conn = get_connection()
     cursor = conn.cursor()
+    user_id = get_current_user_id()
 
     cursor.execute("""
     SELECT
@@ -509,10 +512,10 @@ def generate_excel_from_upload(upload_id,comparison_id):
     MAX(change_type) as change_type,
     MAX(approval_status) as approval_status
     FROM comparison_changes
-    WHERE comparison_id=%s
+    WHERE comparison_id=%s AND user_id=%s
     GROUP BY appser_number
     ORDER BY appser_number
-    """,(comparison_id,))
+    """,(comparison_id, user_id))
     summary_rows = cursor.fetchall()
     conn.close()
 
