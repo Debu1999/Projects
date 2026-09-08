@@ -30,6 +30,7 @@ from .trackora_service import (
 def nl_query():
     print("=== NL QUERY ROUTE HIT ===", flush=True)
     question = request.form.get("question", "")
+    user_id = get_current_user_id()
 
     result = natural_language_to_sql(question)
     print("Generated SQL:", result["sql"], flush=True)   # <-- this line was missing
@@ -37,7 +38,7 @@ def nl_query():
     if not result["sql"]:
         return {"success": False, "error": result["explanation"]}
 
-    query_result = run_safe_query(result["sql"], get_connection)
+    query_result = run_safe_query(result["sql"], get_connection, user_id)
 
     return {
         "success": query_result["success"],
@@ -51,12 +52,13 @@ def nl_query():
 @app.route("/nl_query/download", methods=["POST"])
 def nl_query_download():
     sql = request.form.get("sql", "")
+    user_id = get_current_user_id()
 
     if not is_safe_select(sql):
         return {"error": "Unsafe query, download blocked"}, 400
 
     conn = get_connection()
-    df = pd.read_sql_query(sql, conn)
+    df = pd.read_sql_query(sql, conn, params={"user_id": user_id})
     conn.close()
 
     output = io.BytesIO()
@@ -79,22 +81,24 @@ def applications():
 def applications_cots():
     conn = get_connection()
     cursor = conn.cursor()
+    user_id = get_current_user_id()
 
     # Get all uploads
     cursor.execute("""
         SELECT id, file_name, created_at
         FROM uploads
+        WHERE user_id = %s
         ORDER BY created_at DESC
-    """)
+    """, (user_id,))
     rows = cursor.fetchall()
 
     # Get current master
     cursor.execute("""
         SELECT upload_id
         FROM master_control
-        WHERE is_active = 1
+        WHERE is_active = 1 AND user_id = %s
         LIMIT 1
-    """)
+    """, (user_id,))
     row = cursor.fetchone()
 
     master_id = row[0] if row else None
@@ -121,12 +125,13 @@ def applications_cots():
 def demote_master():
     conn = get_connection()
     cursor = conn.cursor()
+    user_id = get_current_user_id()
  
     cursor.execute("""
         UPDATE master_control
         SET is_active = 0
-        WHERE is_active = 1
-    """)
+        WHERE is_active = 1 AND user_id = %s
+    """, (user_id,))
  
     conn.commit()
     conn.close()
@@ -135,7 +140,7 @@ def demote_master():
 
 @app.route("/applications/send-master-mails", methods=["POST"])
 def send_master_mails():
- 
+    user_id = get_current_user_id()
     data = request.json
     items = data.get("items", [])
  
@@ -147,7 +152,7 @@ def send_master_mails():
     cursor = conn.cursor()
  
     # 🔹 Get active upload
-    cursor.execute("SELECT upload_id FROM master_control WHERE is_active = 1")
+    cursor.execute("SELECT upload_id FROM master_control WHERE is_active = 1 AND user_id = %s", (user_id,))
     row = cursor.fetchone()
  
     if not row:
@@ -176,8 +181,8 @@ def send_master_mails():
         cursor.execute("""
         SELECT send_status
         FROM application_analysis
-        WHERE upload_id=%s AND appser_number=%s
-        """, (upload_id, asn))
+        WHERE upload_id=%s AND appser_number=%s AND user_id=%s
+        """, (upload_id, asn, user_id))
         status_row = cursor.fetchone()
         if status_row and status_row[0] in ("ACTIVE","SENDING"):
             continue
@@ -201,8 +206,8 @@ def send_master_mails():
         ON s.appser_number = a.appser_number
         AND s.upload_id = a.upload_id
  
-        WHERE s.upload_id = %s AND s.appser_number = %s
-        """, (upload_id, asn))
+        WHERE s.upload_id = %s AND s.appser_number = %s AND s.user_id = %s
+        """, (upload_id, asn, user_id))
  
         row_data = cursor.fetchone()
  
@@ -239,8 +244,8 @@ def send_master_mails():
             cursor.execute("""
             UPDATE application_analysis
             SET send_status='SENDING'
-            WHERE upload_id=%s AND appser_number=%s
-            """, (upload_id, asn))
+            WHERE upload_id=%s AND appser_number=%s AND user_id=%s      
+            """, (upload_id, asn, user_id))
             conn.commit()
             result = send_bulk_from_draft(
                 draft_id,
@@ -259,20 +264,21 @@ def send_master_mails():
                 SET send_status='ACTIVE',
                 last_sent_at=%s,
                 conversation_id=%s
-                WHERE upload_id=%s AND appser_number=%s
+                WHERE upload_id=%s AND appser_number=%s AND user_id=%s
                 """, (
                     datetime.now(timezone.utc).isoformat(),
                     conversation_id,
                     upload_id,
-                    asn
+                    asn,
+                    user_id
                 ))
                 conn.commit()
             elif failures:
                 cursor.execute("""
                 UPDATE application_analysis
                 SET send_status='NOT_SENT'
-                WHERE upload_id=%s AND appser_number=%s
-                """, (upload_id, asn))
+                WHERE upload_id=%s AND appser_number=%s AND user_id=%s
+                """, (upload_id, asn, user_id))
                 conn.commit()
  
             total_sent += len(successes)
@@ -282,8 +288,8 @@ def send_master_mails():
             cursor.execute("""
             UPDATE application_analysis
             SET send_status='NOT_SENT'
-            WHERE upload_id=%s AND appser_number=%s
-            """, (upload_id, asn))
+            WHERE upload_id=%s AND appser_number=%s AND user_id=%s
+            """, (upload_id, asn, user_id))
             conn.commit()
  
             total_failed += 1
@@ -311,6 +317,7 @@ def send_master_consolidated():
  
     conn = get_connection()
     cursor = conn.cursor()
+    user_id = get_current_user_id()
  
     try:
  
@@ -321,8 +328,8 @@ def send_master_consolidated():
         cursor.execute("""
             SELECT upload_id
             FROM master_control
-            WHERE is_active = 1
-        """)
+            WHERE is_active = 1 AND user_id = %s
+        """, (user_id,))
  
         row = cursor.fetchone()
  
@@ -384,7 +391,8 @@ def send_master_consolidated():
  
                 WHERE s.upload_id = %s
                 AND s.appser_number = %s
-            """, (upload_id, asn))
+                AND s.user_id = %s
+            """, (upload_id, asn, user_id))
  
             row_data = cursor.fetchone()
  
@@ -488,12 +496,13 @@ def send_master_consolidated():
 def get_master_data():
     conn = get_connection()
     cursor = conn.cursor()
+    user_id = get_current_user_id()
  
     # 🔹 Get active master
     cursor.execute("""
         SELECT upload_id FROM master_control
-        WHERE is_active = 1
-    """)
+        WHERE is_active = 1 AND user_id = %s
+    """, (user_id,))
     row = cursor.fetchone()
  
     if not row:
@@ -541,8 +550,8 @@ def get_master_data():
         AND s.upload_id=m.upload_id
  
  
-        WHERE s.upload_id = %s
-    """, (upload_id,))
+        WHERE s.upload_id = %s AND s.user_id = %s
+    """, (upload_id, user_id,))
  
     rows = cursor.fetchall()
     conn.close()
@@ -590,10 +599,11 @@ def download_master_data():
 
     conn = get_connection()
     cursor = conn.cursor()
+    user_id = get_current_user_id()
 
     cursor.execute("""
-        SELECT upload_id FROM master_control WHERE is_active = 1
-    """)
+        SELECT upload_id FROM master_control WHERE is_active = 1 AND user_id = %s
+    """, (user_id,))
     row = cursor.fetchone()
     if not row:
         return jsonify({"error": "No active master set"}), 400
@@ -613,8 +623,8 @@ def download_master_data():
         FROM applications_snapshot s
         LEFT JOIN application_analysis a
             ON s.appser_number = a.appser_number AND s.upload_id = a.upload_id
-        WHERE s.upload_id = %s
-    """, (upload_id,))
+        WHERE s.upload_id = %s AND s.user_id = %s
+    """, (upload_id, user_id))
 
     rows = cursor.fetchall()
 
@@ -697,9 +707,18 @@ def save_config():
     asn = data["asn"]
     draft = data.get("draft_id")
     category = data.get("category")
+    user_id = get_current_user_id()
  
     conn = get_connection()
     cursor = conn.cursor()
+
+     # 🔒 Ownership check — application_mail_config's own schema isn't
+    # confirmed to have user_id, so we verify via the uploads table instead.
+    cursor.execute("SELECT user_id FROM uploads WHERE id = %s", (upload_id,))
+    owner_row = cursor.fetchone()
+    if not owner_row or owner_row[0] != user_id:
+        conn.close()
+        return jsonify({"message": "Upload not found"}), 404
  
     cursor.execute("""
     INSERT INTO application_mail_config (upload_id, appser_number, draft_id, category)
@@ -743,6 +762,13 @@ def save_analysis():
  
     conn = get_connection()
     cursor = conn.cursor()
+    user_id = get_current_user_id()
+    # 🔒 Ownership check on the upload this analysis row belongs to
+    cursor.execute("SELECT user_id FROM uploads WHERE id = %s", (upload_id,))
+    owner_row = cursor.fetchone()
+    if not owner_row or owner_row[0] != user_id:
+        conn.close()
+        return jsonify({"message": "Upload not found"}), 404
  
     now = datetime.now(timezone.utc)
  
@@ -799,9 +825,11 @@ def save_analysis():
     FROM application_analysis
     WHERE upload_id = %s
     AND appser_number = %s
+    AND user_id = %s
     """, (
         upload_id,
-        appser_number
+        appser_number,
+        user_id
     ))
     existing = cursor.fetchone()
     action_status = "NONE"
@@ -827,11 +855,11 @@ def save_analysis():
     # UPSERT logic (UPDATED)
     cursor.execute("""
     INSERT INTO application_analysis (
-        upload_id, appser_number,
+        upload_id, appser_number,user_id,
         frequency,frequency_unit, comments, internal_status, send_mail,compliance_mode,remediation_due_date,exception_reason,
         last_reviewed_date, next_due_date, updated_at,vendor_status,recommended_action,action_status,review_start_date
     )
-    VALUES (%s, %s, %s, %s,%s, %s, %s, %s, %s, %s,%s,%s,%s,%s,%s,%s,%s)
+    VALUES (%s, %s, %s, %s, %s,%s, %s, %s, %s, %s,%s,%s,%s,%s,%s,%s,%s,%s)
     ON CONFLICT(upload_id, appser_number)
     DO UPDATE SET
         frequency=excluded.frequency,
@@ -850,7 +878,7 @@ def save_analysis():
         action_status=excluded.action_status,
         review_start_date=excluded.review_start_date
     """, (
-        upload_id, appser_number,
+        upload_id, appser_number, user_id,
         frequency,frequency_unit, comments, internal_status, send_mail,
         compliance_mode,remediation_due_date,exception_reason,
         last_reviewed_date, next_due_date,
@@ -868,6 +896,7 @@ def save_analysis():
     })
 @app.route("/rename-upload/<int:upload_id>", methods=["POST"])
 def rename_upload(upload_id):
+    user_id = get_current_user_id()
  
     data = request.json
     new_name = data.get("file_name","").strip()
@@ -881,7 +910,7 @@ def rename_upload(upload_id):
     cursor = conn.cursor()
  
     cursor.execute("""
-        SELECT file_name
+        SELECT file_name,user_id
         FROM uploads
         WHERE id = %s
     """, (upload_id,))
@@ -894,17 +923,23 @@ def rename_upload(upload_id):
             "message": "Upload not found"
         }), 404
  
-    old_name = row[0]
+    old_name,owner_id = row
+    if owner_id != user_id:
+        conn.close()
+        return jsonify({
+            "message": "Upload not found"
+        }), 404
     old_ext = os.path.splitext(old_name)[1]
     if not new_name.lower().endswith(old_ext.lower()):
         new_name += old_ext
     cursor.execute("""
     UPDATE uploads
     SET file_name = %s
-    WHERE id = %s
+    WHERE id = %s AND user_id = %s
     """, (
         new_name,
-        upload_id
+        upload_id,
+        user_id
     ))
     conn.commit()
     conn.close()
@@ -916,8 +951,9 @@ def delete_upload(upload_id):
  
     conn = get_connection()
     cursor = conn.cursor()
+    user_id = get_current_user_id()
     cursor.execute("""
-    SELECT stored_name
+    SELECT stored_name,user_id
     FROM uploads
     WHERE id = %s
     """, (upload_id,))
@@ -929,28 +965,34 @@ def delete_upload(upload_id):
             "message": "Upload not found"
         }), 404
     stored_name = row[0]
+    owner_id = row[1]
+    if owner_id != user_id:
+        conn.close()
+        return jsonify({
+            "message": "Upload not found"
+        }), 404
     file_path = os.path.join("uploads", stored_name)
     if os.path.exists(file_path):
         os.remove(file_path)
     cursor.execute("""
     DELETE FROM master_control
-    WHERE upload_id = %s
-    """, (upload_id,))
+    WHERE upload_id = %s AND user_id = %s
+    """, (upload_id, user_id))
 
     cursor.execute("""
     DELETE FROM applications_snapshot
-    WHERE upload_id = %s
-    """, (upload_id,))
+    WHERE upload_id = %s AND user_id = %s
+    """, (upload_id, user_id))
     
     cursor.execute("""
     DELETE FROM applications_raw_data
-    WHERE upload_id = %s
-    """, (upload_id,))
+    WHERE upload_id = %s AND user_id = %s
+    """, (upload_id, user_id))
     
     cursor.execute("""
     DELETE FROM uploads
-    WHERE id = %s
-    """, (upload_id,))
+    WHERE id = %s AND user_id = %s
+    """, (upload_id, user_id))
     
     conn.commit()
     conn.close()
@@ -970,12 +1012,13 @@ def update_change_status():
  
     conn = get_connection()
     cursor = conn.cursor()
+    user_id = get_current_user_id()
  
     cursor.execute("""
     UPDATE comparison_changes
     SET approval_status = %s
-    WHERE id = %s
-    """, (status, change_id))
+    WHERE id = %s AND user_id = %s
+    """, (status, change_id, user_id))
  
     conn.commit()
     conn.close()
@@ -1013,14 +1056,22 @@ def set_master(upload_id):
  
     conn = get_connection()
     cursor = conn.cursor()
+    user_id=get_current_user_id()
+    # 🔒 Ownership check — make sure this upload actually belongs to the
+    # requesting user before letting them set it as their master
+    cursor.execute("SELECT user_id FROM uploads WHERE id = %s", (upload_id,))
+    owner_row = cursor.fetchone()
+    if not owner_row or owner_row[0] != user_id:
+        conn.close()
+        return jsonify({"message": "Upload not found"}), 404
  
     now = datetime.now(timezone.utc).isoformat()
  
     # 🔹 Get current active master (if any)
     cursor.execute("""
         SELECT upload_id FROM master_control
-        WHERE is_active = 1
-    """)
+        WHERE is_active = 1 AND user_id = %s
+    """, (user_id,))
     row = cursor.fetchone()
     if row:
         old_master_id=row[0]
@@ -1031,14 +1082,14 @@ def set_master(upload_id):
     cursor.execute("""
         UPDATE master_control
         SET is_active = 0
-        WHERE is_active = 1
-    """)
+        WHERE is_active = 1 AND user_id = %s
+    """, (user_id,))
  
     # ✅ Set new master
     cursor.execute("""
-        INSERT INTO master_control (upload_id, is_active, created_at)
-        VALUES (%s, 1, %s)
-    """, (upload_id, now))
+        INSERT INTO master_control (upload_id, user_id, is_active, created_at)
+        VALUES (%s, %s, 1, %s)
+    """, (upload_id, user_id, now))
  
     conn.commit()
     conn.close()
@@ -1059,13 +1110,20 @@ def compare_upload(upload_id):
  
     conn = get_connection()
     cursor = conn.cursor()
+    user_id=get_current_user_id()
+    # 🔒 Ownership check on the target upload
+    cursor.execute("SELECT user_id FROM uploads WHERE id = %s", (upload_id,))
+    owner_row = cursor.fetchone()
+    if not owner_row or owner_row[0] != user_id:
+        conn.close()
+        return jsonify({"error": "Upload not found"}), 404
  
     # ✅ Get active master
     cursor.execute("""
     SELECT upload_id FROM master_control
-    WHERE is_active = 1
+    WHERE is_active = 1 AND user_id = %s
     LIMIT 1
-    """)
+    """, (user_id,))
  
     row = cursor.fetchone()
     conn.close()
@@ -1096,6 +1154,7 @@ def get_comparison_data(comparison_id):
  
     conn = get_connection()
     cursor = conn.cursor()
+    user_id = get_current_user_id()
  
     cursor.execute("""
     SELECT
@@ -1107,9 +1166,9 @@ def get_comparison_data(comparison_id):
         change_type,
         approval_status
     FROM comparison_changes
-    WHERE comparison_id = %s
+    WHERE comparison_id = %s AND user_id = %s
     ORDER BY id DESC
-    """, (comparison_id,))
+    """, (comparison_id, user_id))
  
     rows = cursor.fetchall()
  
@@ -1140,6 +1199,7 @@ def get_review_data(comparison_id):
  
     conn = get_connection()
     cursor = conn.cursor()
+    user_id = get_current_user_id()
  
     cursor.execute("""
         SELECT
@@ -1148,10 +1208,10 @@ def get_review_data(comparison_id):
             MAX(change_type) as change_type,
             MAX(approval_status) as approval_status
         FROM comparison_changes
-        WHERE comparison_id = %s
+        WHERE comparison_id = %s AND user_id = %s
         GROUP BY appser_number
         ORDER BY appser_number
-    """, (comparison_id,))
+    """, (comparison_id, user_id))
  
     rows = cursor.fetchall()
     conn.close()
@@ -1177,6 +1237,7 @@ def get_asn_changes(comparison_id, asn):
  
     conn = get_connection()
     cursor = conn.cursor()
+    user_id = get_current_user_id()
  
     cursor.execute("""
         SELECT
@@ -1189,10 +1250,12 @@ def get_asn_changes(comparison_id, asn):
         FROM comparison_changes
         WHERE comparison_id = %s
         AND appser_number = %s
+        AND user_id = %s
         ORDER BY field_name
     """, (
         comparison_id,
-        asn
+        asn,
+        user_id
     ))
  
     rows = cursor.fetchall()
@@ -1264,10 +1327,17 @@ def download_final_excel(comparison_id):
  
     conn = get_connection()
     cursor = conn.cursor()
+    user_id = get_current_user_id()
  
     # =====================================
     # GET CONSOLIDATED UPLOAD
     # =====================================
+    # 🔒 Ownership check — comparison_logs has its own user_id column
+    cursor.execute("SELECT user_id FROM comparison_logs WHERE id = %s", (comparison_id,))
+    owner_row = cursor.fetchone()
+    if not owner_row or owner_row[0] != user_id:
+        conn.close()
+        return jsonify({"error": "Not found"}), 404
  
     cursor.execute("""
     SELECT id
@@ -1318,6 +1388,7 @@ def generate_consolidated(comparison_id):
  
     conn = get_connection()
     cursor = conn.cursor()
+    user_id = get_current_user_id()
  
     # =====================================
     # GET COMPARISON DETAILS
@@ -1327,6 +1398,7 @@ def generate_consolidated(comparison_id):
     SELECT
         from_upload_id,
         to_upload_id
+        user_id
     FROM comparison_logs
     WHERE id = %s
     """, (comparison_id,))
