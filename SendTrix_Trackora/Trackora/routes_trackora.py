@@ -1379,60 +1379,64 @@ def download_final_excel(comparison_id):
     methods=["POST"]
 )
 def generate_consolidated(comparison_id):
- 
-    from excel_report import (
-        create_upload_from_comparison
-    )
- 
-    from db import get_connection
- 
-    conn = get_connection()
-    cursor = conn.cursor()
-    user_id = get_current_user_id()
- 
-    # =====================================
-    # GET COMPARISON DETAILS
-    # =====================================
- 
-    cursor.execute("""
-    SELECT
-        from_upload_id,
-        to_upload_id
-    FROM comparison_logs
-    WHERE id = %s AND user_id = %s
-    """, (comparison_id, user_id))
- 
-    row = cursor.fetchone()
- 
-    conn.close()
- 
-    if not row:
-        return jsonify({
-            "error": "Comparison not found"
-        }), 404
- 
-    master_upload_id = row[0]
-    target_upload_id = row[1]
- 
-    # =====================================
-    # CREATE CONSOLIDATED UPLOAD
-    # =====================================
- 
-    new_upload_id = (
-        create_upload_from_comparison(
-            comparison_id,
-            master_upload_id,
-            target_upload_id
+    try:
+        from excel_report import (
+            create_upload_from_comparison
         )
-    )
-    initialize_or_carry_analysis(master_upload_id,new_upload_id)
-    carry_forward_mail_config(master_upload_id,new_upload_id)
-    #carry_forward_meetings(master_upload_id,new_upload_id)
- 
-    return jsonify({
-        "message": "Consolidated sheet generated",
-        "upload_id": new_upload_id
-    })
+
+        from db import get_connection
+
+        conn = get_connection()
+        cursor = conn.cursor()
+        user_id = get_current_user_id()
+
+        # =====================================
+        # GET COMPARISON DETAILS
+        # =====================================
+
+        cursor.execute("""
+        SELECT
+            from_upload_id,
+            to_upload_id
+        FROM comparison_logs
+        WHERE id = %s AND user_id = %s
+        """, (comparison_id, user_id))
+
+        row = cursor.fetchone()
+
+        conn.close()
+
+        if not row:
+            return jsonify({
+                "error": "Comparison not found"
+            }), 404
+
+        master_upload_id = row[0]
+        target_upload_id = row[1]
+
+        # =====================================
+        # CREATE CONSOLIDATED UPLOAD
+        # =====================================
+
+        new_upload_id = (
+            create_upload_from_comparison(
+                comparison_id,
+                master_upload_id,
+                target_upload_id
+            )
+        )
+        initialize_or_carry_analysis(master_upload_id,new_upload_id)
+        carry_forward_mail_config(master_upload_id,new_upload_id)
+        #carry_forward_meetings(master_upload_id,new_upload_id)
+
+        return jsonify({
+            "message": "Consolidated sheet generated",
+            "upload_id": new_upload_id
+        })
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        return jsonify({"error": str(e), "trace": traceback.format_exc()}), 500
 @app.route("/upload", methods=["POST"])
 def upload_application_file():
     import time
