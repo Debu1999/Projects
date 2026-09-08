@@ -1398,10 +1398,9 @@ def generate_consolidated(comparison_id):
     SELECT
         from_upload_id,
         to_upload_id
-        user_id
     FROM comparison_logs
-    WHERE id = %s
-    """, (comparison_id,))
+    WHERE id = %s AND user_id = %s
+    """, (comparison_id, user_id))
  
     row = cursor.fetchone()
  
