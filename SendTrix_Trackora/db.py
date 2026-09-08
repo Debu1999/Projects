@@ -324,7 +324,7 @@ def init_db():
             # =========================================================
             cursor.execute("""
                 CREATE TABLE IF NOT EXISTS application_mail_config (
-                    upload_id TEXT,
+                    upload_id INTEGER,
                     appser_number TEXT,
                     draft_id TEXT,
                     category TEXT,
