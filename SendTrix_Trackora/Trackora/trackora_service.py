@@ -697,6 +697,7 @@ def carry_forward_mail_config(old_master_id, new_master_id):
 def initialize_or_carry_analysis(old_master_id, new_master_id):
     conn = get_connection()
     cursor = conn.cursor()
+    user_id=get_current_user_id()
 
     if old_master_id is None:
         conn.close()
@@ -711,8 +712,8 @@ def initialize_or_carry_analysis(old_master_id, new_master_id):
     cursor.execute("""
     SELECT COUNT(*)
     FROM application_analysis
-    WHERE upload_id = %s
-    """, (new_master_id,))
+    WHERE upload_id = %s AND user_id=%s
+    """, (new_master_id, user_id))
     existing_rows = cursor.fetchone()[0]
     
     if existing_rows > 0:
@@ -725,8 +726,8 @@ def initialize_or_carry_analysis(old_master_id, new_master_id):
     cursor.execute("""
     SELECT *
     FROM application_analysis
-    WHERE upload_id=%s
-    """,(old_master_id,))
+    WHERE upload_id=%s AND user_id=%s
+    """,(old_master_id, user_id))
     columns = [d[0] for d in cursor.description]
         
     for row in cursor.fetchall():
@@ -736,8 +737,8 @@ def initialize_or_carry_analysis(old_master_id, new_master_id):
     # Get new snapshot ASNs
     cursor.execute("""
         SELECT appser_number FROM applications_snapshot
-        WHERE upload_id = %s
-    """, (new_master_id,))
+        WHERE upload_id = %s AND user_id = %s
+    """, (new_master_id, user_id))
     new_rows = [r[0] for r in cursor.fetchall()]
  
     for asn in new_rows:
@@ -770,19 +771,21 @@ def initialize_or_carry_analysis(old_master_id, new_master_id):
             (
             upload_id,
             appser_number,
+            user_id,
             updated_at
             )
-            VALUES (%s, %s, %s)
+            VALUES (%s, %s, %s, %s)
             """, (
                 new_master_id,
                 asn,
+                user_id,
                 datetime.now(timezone.utc).isoformat()
             ))
     cursor.execute("""
     SELECT COUNT(*)
     FROM application_analysis
-    WHERE upload_id = %s
-    """, (new_master_id,))
+    WHERE upload_id = %s AND user_id = %s
+    """, (new_master_id, user_id))
     print("Rows before commit:", cursor.fetchone()[0])
     conn.commit()
     conn.close()
